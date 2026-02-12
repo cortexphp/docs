@@ -1,0 +1,153 @@
+name: Aggregate Docs
+
+on:
+  push:
+    branches: [main]
+  repository_dispatch:
+    types: [docs-updated]
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: aggregate-docs
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/github-script@v8
+        name: Aggregate docs from source repos
+        env:
+          PUSH_TOKEN: ${{ secrets.DOCS_PUSH_TOKEN }}
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            // Read config files
+            const repos = JSON.parse(fs.readFileSync('repos.json', 'utf8'));
+            const docsConfig = JSON.parse(fs.readFileSync('docs.json', 'utf8'));
+
+            // Reset products array (start fresh each run)
+            docsConfig.navigation.products = [];
+
+            // Create a temp working directory for the aggregated output
+            const outDir = path.join(process.env.RUNNER_TEMP, 'aggregated');
+            await io.mkdirP(outDir);
+
+            // Copy base assets and config
+            await io.cp('assets', path.join(outDir, 'assets'), { recursive: true });
+
+            // Copy any top-level MDX pages from the docs repo itself
+            for (const file of fs.readdirSync('.')) {
+              if (file.endsWith('.mdx')) {
+                await io.cp(file, path.join(outDir, file));
+              }
+            }
+
+            // Process each source repo
+            for (const { owner, repo, docsPath = 'docs', ref = 'main' } of repos) {
+              core.startGroup(`Processing ${owner}/${repo}`);
+
+              const cloneDir = path.join(process.env.RUNNER_TEMP, 'repos', repo);
+              await io.rmRF(cloneDir);
+
+              // Clone the repo (shallow, specific branch)
+              await exec.exec('git', [
+                'clone', '--depth=1', '--branch', ref,
+                `https://x-access-token:${process.env.PUSH_TOKEN}@github.com/${owner}/${repo}.git`,
+                cloneDir
+              ]);
+
+              const sourceDir = path.join(cloneDir, docsPath);
+              const sourceConfig = path.join(sourceDir, 'docs.json');
+
+              if (!fs.existsSync(sourceConfig)) {
+                core.warning(`No docs.json found in ${owner}/${repo}/${docsPath}, skipping`);
+                core.endGroup();
+                continue;
+              }
+
+              // Read the source repo's docs.json and merge navigation.products
+              const subConfig = JSON.parse(fs.readFileSync(sourceConfig, 'utf8'));
+              const subProducts = subConfig.navigation?.products ?? [];
+              docsConfig.navigation.products.push(...subProducts);
+
+              // Copy all content except docs.json and assets/
+              const copyContents = (src, dest) => {
+                for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+                  if (entry.name === 'docs.json' || entry.name === 'assets') continue;
+                  const srcPath = path.join(src, entry.name);
+                  const destPath = path.join(dest, entry.name);
+                  if (entry.isDirectory()) {
+                    fs.mkdirSync(destPath, { recursive: true });
+                    copyContents(srcPath, destPath);
+                  } else {
+                    fs.cpSync(srcPath, destPath);
+                  }
+                }
+              };
+
+              copyContents(sourceDir, outDir);
+              core.endGroup();
+            }
+
+            // Write the merged docs.json
+            fs.writeFileSync(
+              path.join(outDir, 'docs.json'),
+              JSON.stringify(docsConfig, null, 4) + '\n'
+            );
+
+            core.info(`Aggregated ${docsConfig.navigation.products.length} product(s)`);
+
+            // Switch to the docs branch and replace contents
+            const branch = 'docs';
+
+            try {
+              await exec.exec('git', ['fetch', 'origin', branch]);
+              await exec.exec('git', ['checkout', branch]);
+            } catch {
+              await exec.exec('git', ['checkout', '--orphan', branch]);
+              await exec.exec('git', ['rm', '-rf', '.']);
+            }
+
+            // Clear the working directory (except .git)
+            for (const entry of fs.readdirSync('.')) {
+              if (entry === '.git') continue;
+              await io.rmRF(entry);
+            }
+
+            // Copy aggregated content into the working directory
+            await io.cp(outDir, '.', { recursive: true, force: true });
+
+            // Commit and push
+            await exec.exec('git', ['add', '.']);
+
+            let hasChanges = false;
+            try {
+              await exec.exec('git', ['diff', '--cached', '--quiet']);
+            } catch {
+              hasChanges = true;
+            }
+
+            if (!hasChanges) {
+              core.info('No changes detected, skipping commit');
+              return;
+            }
+
+            await exec.exec('git', ['config', 'user.name', 'github-actions[bot]']);
+            await exec.exec('git', [
+              'config', 'user.email',
+              'github-actions[bot]@users.noreply.github.com'
+            ]);
+            await exec.exec('git', ['commit', '-m', 'docs: aggregate from source repos']);
+            await exec.exec('git', ['push', 'origin', branch]);
+
+            core.info('Docs aggregated and pushed successfully');
