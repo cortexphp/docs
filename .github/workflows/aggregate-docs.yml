@@ -25,7 +25,7 @@ jobs:
       - uses: actions/github-script@v8
         name: Aggregate docs from source repos
         env:
-          PUSH_TOKEN: ${{ secrets.DOCS_PUSH_TOKEN }}
+          PUSH_TOKEN: ${{ secrets.DOCS_TOKEN }}
         with:
           script: |
             const fs = require('fs');
