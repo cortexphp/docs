@@ -1,0 +1,213 @@
+---
+title: String Formats
+description: 'Comprehensive guide to all built-in string format validators'
+icon: 'paintbrush'
+---
+
+String formats provide built-in validation for common data types like emails, URLs, dates, and more. Each format enforces specific patterns and rules appropriate for the data type.
+
+## Basic Format Usage
+
+```php
+use Cortex\JsonSchema\Schema;
+use Cortex\JsonSchema\Enums\SchemaFormat;
+
+$emailSchema = Schema::string('email')
+    ->format(SchemaFormat::Email)
+    ->required();
+
+$emailSchema->isValid('user@example.com');  // true
+$emailSchema->isValid('invalid-email');     // false
+```
+
+## Common String Formats
+
+The package supports all standard JSON Schema string formats. Here are examples of the most commonly used ones:
+
+### Email and URI Formats
+
+```php
+// Email validation
+$emailSchema = Schema::string('email')
+    ->format(SchemaFormat::Email);
+
+$emailSchema->isValid('user@example.com');  // true
+$emailSchema->isValid('invalid-email');     // false
+
+// URI validation
+$uriSchema = Schema::string('website')
+    ->format(SchemaFormat::Uri);
+
+$uriSchema->isValid('https://example.com'); // true
+$uriSchema->isValid('not a uri');           // false
+```
+
+### Network Formats
+
+```php
+// Hostname
+$hostnameSchema = Schema::string('hostname')
+    ->format(SchemaFormat::Hostname);
+
+$hostnameSchema->isValid('example.com');    // true
+
+// IPv4 and IPv6
+$ipv4Schema = Schema::string('ipv4')->format(SchemaFormat::Ipv4);
+$ipv6Schema = Schema::string('ipv6')->format(SchemaFormat::Ipv6);
+
+$ipv4Schema->isValid('192.168.1.1');        // true
+$ipv6Schema->isValid('2001:db8::1');        // true
+```
+
+### Date and Time Formats
+
+```php
+use Cortex\JsonSchema\Enums\SchemaVersion;
+
+// Date (YYYY-MM-DD)
+$dateSchema = Schema::string('birth_date')
+    ->format(SchemaFormat::Date);
+
+$dateSchema->isValid('2023-12-25');         // true
+
+// Date-Time (RFC 3339)
+$dateTimeSchema = Schema::string('created_at')
+    ->format(SchemaFormat::DateTime);
+
+$dateTimeSchema->isValid('2023-12-25T14:30:00Z'); // true
+
+// Duration (ISO 8601) - Draft 2019-09+
+$durationSchema = Schema::string('duration', SchemaVersion::Draft_2019_09)
+    ->format(SchemaFormat::Duration);
+
+$durationSchema->isValid('PT30M');          // true (30 minutes)
+```
+
+### JSON Schema Formats
+
+```php
+// JSON Pointer
+$jsonPointerSchema = Schema::string('pointer')
+    ->format(SchemaFormat::JsonPointer);
+
+$jsonPointerSchema->isValid('/users/123/name'); // true
+
+// UUID - Draft 2019-09+
+$uuidSchema = Schema::string('id', SchemaVersion::Draft_2019_09)
+    ->format(SchemaFormat::Uuid);
+
+$uuidSchema->isValid('123e4567-e89b-12d3-a456-426614174000'); // true
+```
+
+## Format Validation Examples
+
+### Real-World Schema with Multiple Formats
+
+```php
+use Cortex\JsonSchema\Schema;
+use Cortex\JsonSchema\Enums\SchemaFormat;
+use Cortex\JsonSchema\Enums\SchemaVersion;
+
+$userProfileSchema = Schema::object('user_profile')
+    ->properties(
+        // Contact information
+        Schema::string('email')
+            ->format(SchemaFormat::Email)
+            ->required()
+            ->description('User email address'),
+
+        Schema::string('website')
+            ->format(SchemaFormat::Uri)
+            ->description('Personal website URL'),
+
+        Schema::string('phone')
+            ->pattern('^\+\d{1,3}-\d{3,4}-\d{6,8}$')  // Custom pattern for phone
+            ->description('International phone number'),
+
+        // Timestamps
+        Schema::string('created_at')
+            ->format(SchemaFormat::DateTime)
+            ->readOnly()
+            ->description('Account creation timestamp'),
+
+        Schema::string('birth_date')
+            ->format(SchemaFormat::Date)
+            ->description('Date of birth'),
+
+        // Identifiers
+        Schema::string('user_id', SchemaVersion::Draft_2019_09)
+            ->format(SchemaFormat::Uuid)
+            ->readOnly()
+            ->description('Unique user identifier'),
+
+        // Network information
+        Schema::string('last_ip')
+            ->anyOf(
+                Schema::string()->format(SchemaFormat::Ipv4),
+                Schema::string()->format(SchemaFormat::Ipv6)
+            )
+            ->readOnly()
+            ->description('Last known IP address'),
+
+        // Duration fields
+        Schema::string('session_duration', SchemaVersion::Draft_2019_09)
+            ->format(SchemaFormat::Duration)
+            ->readOnly()
+            ->description('Total session duration')
+    );
+
+// Validation example
+$validProfile = [
+    'email' => 'user@example.com',
+    'website' => 'https://johndoe.com',
+    'phone' => '+1-555-1234567',
+    'created_at' => '2023-01-01T00:00:00Z',
+    'birth_date' => '1990-05-15',
+    'user_id' => '123e4567-e89b-12d3-a456-426614174000',
+    'last_ip' => '192.168.1.100',
+    'session_duration' => 'PT2H30M'
+];
+
+$userProfileSchema->isValid($validProfile); // true
+```
+
+## Format Support by Version
+
+| Format | Draft-07 | Draft 2019-09 | Draft 2020-12 | Description |
+|--------|----------|---------------|---------------|-------------|
+| `Email` | ✅ | ✅ | ✅ | Standard email address |
+| `Uri` | ✅ | ✅ | ✅ | URI reference |
+| `UriReference` | ✅ | ✅ | ✅ | URI reference (relative or absolute) |
+| `Hostname` | ✅ | ✅ | ✅ | Internet hostname |
+| `Ipv4` | ✅ | ✅ | ✅ | IPv4 address |
+| `Ipv6` | ✅ | ✅ | ✅ | IPv6 address |
+| `Date` | ✅ | ✅ | ✅ | Full date |
+| `Time` | ✅ | ✅ | ✅ | Time |
+| `DateTime` | ✅ | ✅ | ✅ | Date and time |
+| `JsonPointer` | ✅ | ✅ | ✅ | JSON Pointer |
+| `RelativeJsonPointer` | ✅ | ✅ | ✅ | Relative JSON Pointer |
+| `UriTemplate` | ✅ | ✅ | ✅ | URI Template |
+| `Regex` | ✅ | ✅ | ✅ | Regular expression pattern |
+| **Draft 2019-09+** |
+| `Duration` | ❌ | ✅ | ✅ | ISO 8601 duration |
+| `Uuid` | ❌ | ✅ | ✅ | UUID string |
+| `IdnEmail` | ❌ | ✅ | ✅ | Internationalized email |
+| `Iri` | ❌ | ✅ | ✅ | Internationalized URI |
+| `IriReference` | ❌ | ✅ | ✅ | IRI reference |
+
+## Common Use Cases
+
+<CardGroup cols={2}>
+  <Card title="User Data Validation" icon="user">
+    Validate emails, websites, phone numbers, and other user-provided contact information.
+  </Card>
+  <Card title="API Parameters" icon="code">
+    Validate API endpoints, UUIDs, timestamps, and other structured data in API requests.
+  </Card>
+  <Card title="Configuration Files" icon="cog">
+    Validate URLs, hostnames, IP addresses, and other configuration values.
+  </Card>
+  <Card title="Data Import" icon="file-input">
+    Validate formatted data during import processes with appropriate type checking.
+  </Card>
+</CardGroup>

@@ -1,0 +1,514 @@
+---
+title: From PHP Classes
+description: 'Generate JSON schemas automatically from PHP class definitions'
+icon: 'code'
+---
+
+Generate JSON schemas automatically from PHP classes using reflection and docblock analysis. This feature extracts property types, validation rules, and documentation from your existing PHP classes.
+
+## Basic Class Schema Generation
+
+Generate a schema from a simple PHP class:
+
+```php
+use Cortex\JsonSchema\Schema;
+
+/**
+ * User profile information
+ */
+class User
+{
+    /**
+     * @var string The user's full name
+     */
+    public string $name;
+
+    /**
+     * @var int The user's age in years
+     */
+    public int $age;
+
+    /**
+     * @var string The user's email address
+     */
+    public string $email;
+
+    /**
+     * @var bool Whether the user account is active
+     */
+    public bool $active = true;
+}
+
+// Generate schema from class
+$schema = Schema::fromClass(User::class);
+
+// Convert to JSON Schema
+$jsonSchema = $schema->toJson(JSON_PRETTY_PRINT);
+```
+
+<Accordion title="View Generated JSON Schema">
+```json
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "title": "User",
+    "description": "User profile information",
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "The user's full name"
+        },
+        "age": {
+            "type": "integer",
+            "description": "The user's age in years"
+        },
+        "email": {
+            "type": "string",
+            "description": "The user's email address"
+        },
+        "active": {
+            "type": "boolean",
+            "description": "Whether the user account is active",
+            "default": true
+        }
+    },
+    "required": ["name", "age", "email"]
+}
+```
+</Accordion>
+
+## Nullable and Optional Properties
+
+Handle nullable properties and default values:
+
+```php
+/**
+ * Product information
+ */
+class Product
+{
+    /**
+     * @var string Product name (required)
+     */
+    public string $name;
+
+    /**
+     * @var ?string Product description (optional)
+     */
+    public ?string $description = null;
+
+    /**
+     * @var float Product price
+     */
+    public float $price;
+
+    /**
+     * @var ?float Discounted price (if applicable)
+     */
+    public ?float $sale_price = null;
+
+    /**
+     * @var bool Whether product is in stock
+     */
+    public bool $in_stock = true;
+
+    /**
+     * @var array Product tags
+     */
+    public array $tags = [];
+}
+
+$schema = Schema::fromClass(Product::class);
+```
+
+<Accordion title="View Generated JSON Schema">
+```json
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "title": "Product",
+    "description": "Product information",
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "Product name (required)"
+        },
+        "description": {
+            "type": ["string", "null"],
+            "description": "Product description (optional)",
+            "default": null
+        },
+        "price": {
+            "type": "number",
+            "description": "Product price"
+        },
+        "sale_price": {
+            "type": ["number", "null"],
+            "description": "Discounted price (if applicable)",
+            "default": null
+        },
+        "in_stock": {
+            "type": "boolean",
+            "description": "Whether product is in stock",
+            "default": true
+        },
+        "tags": {
+            "type": "array",
+            "description": "Product tags",
+            "default": []
+        }
+    },
+    "required": ["name", "price"]
+}
+```
+</Accordion>
+
+## Schema Version Support
+
+Specify the JSON Schema version when generating:
+
+```php
+use Cortex\JsonSchema\Enums\SchemaVersion;
+
+/**
+ * Modern user profile with advanced features
+ */
+class ModernUser
+{
+    public string $name;
+    public string $email;
+
+    /**
+     * @var ?string Legacy email field
+     * @deprecated Use email instead
+     */
+    public ?string $old_email = null;
+}
+
+// Generate with Draft 2019-09 for deprecated support
+$schema = Schema::fromClass(
+    ModernUser::class,
+    version: SchemaVersion::Draft_2019_09
+);
+
+// The generated schema will include "deprecated": true for old_email
+```
+
+## Complex Property Types
+
+Handle complex property types and collections:
+
+```php
+/**
+ * Order with complex nested structures
+ */
+class Order
+{
+    /**
+     * @var string Order ID
+     */
+    public string $id;
+
+    /**
+     * @var array List of order items
+     */
+    public array $items;
+
+    /**
+     * @var object Shipping address
+     */
+    public object $shipping_address;
+
+    /**
+     * @var ?object Billing address (same as shipping if null)
+     */
+    public ?object $billing_address = null;
+
+    /**
+     * @var array Additional notes
+     */
+    public array $notes = [];
+
+    /**
+     * @var array Metadata key-value pairs
+     */
+    public array $metadata = [];
+}
+
+$schema = Schema::fromClass(Order::class);
+// Custom class types (like Address) are treated as generic 'object' type
+// Generic array syntax (e.g., array<OrderItem>) in docblocks is not parsed
+// Arrays are treated as generic arrays without item type information
+```
+
+<Note>
+Custom class types (non-built-in PHP types) are converted to generic `object` schemas. The converter does not recursively analyze nested classes or parse generic array syntax from docblocks. To create schemas for nested objects, generate them separately and combine them using the fluent API.
+</Note>
+
+## Enum Integration
+
+Automatically handle backed enums:
+
+```php
+/**
+ * User status levels
+ */
+enum UserStatus: string
+{
+    case Active = 'active';
+    case Inactive = 'inactive';
+    case Suspended = 'suspended';
+    case Pending = 'pending';
+}
+
+/**
+ * Priority levels
+ */
+enum Priority: int
+{
+    case Low = 1;
+    case Medium = 2;
+    case High = 3;
+    case Critical = 4;
+}
+
+/**
+ * Task management
+ */
+class Task
+{
+    public string $title;
+    public string $description;
+    public UserStatus $status;
+    public Priority $priority;
+    public ?DateTime $due_date = null;
+}
+
+$schema = Schema::fromClass(Task::class);
+```
+
+The generated schema will automatically include enum constraints:
+
+<Accordion title="View Generated JSON Schema">
+```json
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+        "status": {
+            "type": "string",
+            "enum": ["active", "inactive", "suspended", "pending"]
+        },
+        "priority": {
+            "type": "integer",
+            "enum": [1, 2, 3, 4]
+        }
+    },
+    "required": ["status", "priority"]
+}
+```
+</Accordion>
+
+## Inheritance and Trait Support
+
+Handle class inheritance and traits:
+
+```php
+/**
+ * Base entity with common fields
+ */
+abstract class BaseEntity
+{
+    /**
+     * @var string Unique identifier
+     */
+    public string $id;
+
+    /**
+     * @var DateTime Creation timestamp
+     */
+    public DateTime $created_at;
+
+    /**
+     * @var DateTime Last update timestamp
+     */
+    public DateTime $updated_at;
+}
+
+/**
+ * Timestamping functionality
+ */
+trait Timestampable
+{
+    /**
+     * @var ?DateTime Deletion timestamp (soft delete)
+     */
+    public ?DateTime $deleted_at = null;
+}
+
+/**
+ * Complete user entity
+ */
+class CompleteUser extends BaseEntity
+{
+    use Timestampable;
+
+    public string $name;
+    public string $email;
+
+    /**
+     * @var array<string> User roles
+     */
+    public array $roles = ['user'];
+}
+
+$schema = Schema::fromClass(CompleteUser::class);
+// Schema will include properties from base class and traits
+```
+
+## Validation and Usage
+
+Use the generated schema to validate data:
+
+```php
+/**
+ * User profile class
+ */
+class UserProfile
+{
+    /**
+     * @var string User's full name
+     */
+    public string $name;
+
+    /**
+     * @var string Email address
+     */
+    public string $email;
+
+    /**
+     * @var int User's age
+     */
+    public int $age;
+}
+
+// Generate schema from class
+$userSchema = Schema::fromClass(UserProfile::class);
+
+// Test data
+$userData = [
+    'name' => 'John Doe',
+    'email' => 'john@example.com',
+    'age' => 30
+];
+
+// Validate
+if ($userSchema->isValid($userData)) {
+    echo "User data is valid";
+} else {
+    try {
+        $userSchema->validate($userData);
+    } catch (SchemaException $e) {
+        echo "Validation error: " . $e->getMessage();
+    }
+}
+```
+
+## What Gets Extracted from Docblocks
+
+The schema generator automatically extracts the following from your docblocks:
+
+- **Description text** - From the docblock summary and description
+- **Property types** - From `@var` annotations (combined with native PHP types)
+- **Parameter types** - From `@param` annotations
+- **Deprecation status** - Using the `@deprecated` tag
+
+<Note>
+Validation rules (like minLength, pattern, format) are **not** extracted from docblocks. You need to apply them programmatically using the fluent API after generation, or define them in your actual PHP code using native types and enums.
+</Note>
+
+## Best Practices
+
+### 1. Use Descriptive Class and Property Documentation
+
+```php
+/**
+ * User account information for the application
+ *
+ * This class represents a user account with all necessary
+ * information for authentication and profile management.
+ */
+class UserAccount
+{
+    /**
+     * @var string The user's unique username for login
+     *
+     * Must be 3-20 characters, alphanumeric with underscores allowed.
+     * Cannot be changed after account creation.
+     */
+    public string $username;
+}
+```
+
+### 2. Leverage Type Hints and Nullable Types
+
+```php
+// Good: Clear type information
+public string $name;              // Required string
+public ?string $nickname = null;  // Optional string
+public int $age;                  // Required integer
+public ?DateTime $last_login;     // Optional datetime
+
+// Avoid: Unclear types
+public $data;                     // Type unknown
+```
+
+### 3. Use Type Hints and Enums for Validation
+
+```php
+// Good: Use backed enums for clear validation
+enum Status: string {
+    case Active = 'active';
+    case Inactive = 'inactive';
+}
+
+public Status $status;
+
+// Good: Document types clearly
+/**
+ * @var string Email address
+ */
+public string $email;
+
+/**
+ * @var string Username
+ */
+public string $username;
+
+// Good: Document complex array types
+/**
+ * @var array<string> List of user roles
+ */
+public array $roles;
+```
+
+<Note>
+Validation rules like minLength, pattern, format are not extracted from docblocks. Generic array syntax (e.g., `array<string>`, `array<OrderItem>`) in docblocks is not parsed - arrays are treated as generic arrays without item type information. Apply validation rules and array item schemas programmatically using the fluent API after schema generation, or use native PHP types and enums for type validation.
+</Note>
+
+## Common Use Cases
+
+<CardGroup cols={2}>
+  <Card title="API Documentation" icon="server">
+    Generate OpenAPI schemas from your data transfer objects and API models.
+  </Card>
+  <Card title="Form Validation" icon="file-text">
+    Create client-side validation schemas from your backend models.
+  </Card>
+  <Card title="Data Migration" icon="move">
+    Validate data integrity during migrations using existing model definitions.
+  </Card>
+  <Card title="Configuration Validation" icon="cog">
+    Generate schemas for application configuration classes.
+  </Card>
+</CardGroup>

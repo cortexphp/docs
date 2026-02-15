@@ -21,7 +21,57 @@
         ]
     },
     "navigation": {
-        "products": []
+        "products": [
+            {
+                "product": "JSON Schema",
+                "icon": "braces",
+                "groups": [
+                    {
+                        "group": "Get Started",
+                        "pages": [
+                            "json-schema/introduction",
+                            "json-schema/installation",
+                            "json-schema/quickstart",
+                            "json-schema/versions",
+                            "json-schema/mcp-server"
+                        ]
+                    },
+                    {
+                        "group": "Schema Types",
+                        "pages": [
+                            "json-schema/schema-types/object",
+                            "json-schema/schema-types/array",
+                            "json-schema/schema-types/string",
+                            "json-schema/schema-types/number",
+                            "json-schema/schema-types/integer",
+                            "json-schema/schema-types/boolean",
+                            "json-schema/schema-types/union",
+                            "json-schema/schema-types/null"
+                        ]
+                    },
+                    {
+                        "group": "Advanced Features",
+                        "pages": [
+                            "json-schema/advanced/conditional-validation",
+                            "json-schema/advanced/string-formats",
+                            "json-schema/advanced/definitions-refs",
+                            "json-schema/advanced/unevaluated-properties",
+                            "json-schema/advanced/dependent-schemas",
+                            "json-schema/advanced/pattern-properties"
+                        ]
+                    },
+                    {
+                        "group": "Code Generation",
+                        "pages": [
+                            "json-schema/code-generation/from-classes",
+                            "json-schema/code-generation/from-closures",
+                            "json-schema/code-generation/from-enums",
+                            "json-schema/code-generation/from-json"
+                        ]
+                    }
+                ]
+            }
+        ]
     },
     "logo": {
         "light": "/assets/logo-light.svg",
@@ -36,7 +86,12 @@
         }
     },
     "contextual": {
-        "options": ["copy", "view", "chatgpt", "claude"]
+        "options": [
+            "copy",
+            "view",
+            "chatgpt",
+            "claude"
+        ]
     },
     "footer": {
         "socials": {
