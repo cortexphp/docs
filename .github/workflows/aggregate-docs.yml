@@ -107,27 +107,31 @@ jobs:
 
             core.info(`Aggregated ${docsConfig.navigation.products.length} product(s)`);
 
-            // Switch to the docs branch and replace contents
-            const branch = 'docs';
-
-            try {
-              await exec.exec('git', ['fetch', 'origin', branch]);
-              await exec.exec('git', ['checkout', branch]);
-            } catch {
-              await exec.exec('git', ['checkout', '--orphan', branch]);
-              await exec.exec('git', ['rm', '-rf', '.']);
-            }
-
-            // Clear the working directory (except .git)
+            // Remove aggregated content directories from the working tree
+            // (keeps .git, .github, repos.json, docs.json, assets, and top-level MDX intact)
+            // Then copy fresh aggregated content in
+            const preserve = new Set(['.git', '.github', 'repos.json', 'node_modules']);
             for (const entry of fs.readdirSync('.')) {
-              if (entry === '.git') continue;
+              if (preserve.has(entry)) continue;
               await io.rmRF(entry);
             }
 
             // Copy aggregated content into the working directory
-            await io.cp(outDir, '.', { recursive: true, force: true });
+            const copyRecursive = (src, dest) => {
+              for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+                const srcPath = path.join(src, entry.name);
+                const destPath = path.join(dest, entry.name);
+                if (entry.isDirectory()) {
+                  fs.mkdirSync(destPath, { recursive: true });
+                  copyRecursive(srcPath, destPath);
+                } else {
+                  fs.cpSync(srcPath, destPath);
+                }
+              }
+            };
+            copyRecursive(outDir, '.');
 
-            // Commit and push
+            // Commit and push to main
             await exec.exec('git', ['add', '.']);
 
             let hasChanges = false;
@@ -148,6 +152,6 @@ jobs:
               'github-actions[bot]@users.noreply.github.com'
             ]);
             await exec.exec('git', ['commit', '-m', 'docs: aggregate from source repos']);
-            await exec.exec('git', ['push', 'origin', branch]);
+            await exec.exec('git', ['push']);
 
             core.info('Docs aggregated and pushed successfully');
