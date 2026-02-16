@@ -4,5 +4,11 @@
         "repo": "json-schema",
         "docsPath": "docs",
         "ref": "main"
+    },
+    {
+        "owner": "cortexphp",
+        "repo": "json-repair",
+        "docsPath": "docs",
+        "ref": "main"
     }
 ]
