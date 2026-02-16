@@ -70,6 +70,28 @@
                         ]
                     }
                 ]
+            },
+            {
+                "product": "JSON Repair",
+                "icon": "shield-ellipsis",
+                "groups": [
+                    {
+                        "group": "Get Started",
+                        "pages": [
+                            "json-repair/introduction",
+                            "json-repair/installation",
+                            "json-repair/quickstart"
+                        ]
+                    },
+                    {
+                        "group": "Usage",
+                        "pages": [
+                            "json-repair/repair-examples",
+                            "json-repair/configuration",
+                            "json-repair/logging"
+                        ]
+                    }
+                ]
             }
         ]
     },
