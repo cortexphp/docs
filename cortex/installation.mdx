@@ -1,0 +1,73 @@
+---
+title: Installation
+description: 'Install and set up the Cortex package.'
+icon: 'terminal'
+---
+
+## Requirements
+
+- PHP 8.4+
+- Laravel 12+
+
+## Setup
+
+<Steps>
+  <Step title="Install the Package">
+    ```bash
+    composer require cortexphp/cortex
+    ```
+  </Step>
+  <Step title="Publish the Config">
+    ```bash
+    php artisan vendor:publish --tag=cortex-config
+    ```
+
+    This creates `config/cortex.php` where you configure LLM providers, prompt factories, embeddings, and more. See [Configuration](/cortex/configuration) for a full reference.
+  </Step>
+  <Step title="Add Your API Key">
+    Cortex defaults to OpenAI. Add your key to `.env`:
+
+    ```bash
+    OPENAI_API_KEY=sk-...
+    ```
+
+    To use a different provider by default:
+
+    ```bash
+    CORTEX_DEFAULT_LLM=anthropic
+    ANTHROPIC_API_KEY=sk-ant-...
+    ```
+  </Step>
+</Steps>
+
+You're ready to go. Head to the [Quick Start](/cortex/quickstart) to make your first call.
+
+---
+
+## Package Development
+
+If you're contributing to Cortex or want to run the test suite:
+
+<Steps>
+  <Step title="Clone the Repository">
+    ```bash
+    git clone https://github.com/cortexphp/cortex.git
+    cd cortex
+    ```
+  </Step>
+  <Step title="Install Dependencies">
+    ```bash
+    composer install
+    ```
+  </Step>
+  <Step title="Run Tests">
+    ```bash
+    composer test
+    ```
+  </Step>
+  <Step title="Run Tests and Code Quality Tools">
+    ```bash
+    composer check
+    ```
+  </Step>
+</Steps>

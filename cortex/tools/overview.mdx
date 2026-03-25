@@ -1,0 +1,116 @@
+---
+title: Overview
+description: 'Give agents the ability to call functions, APIs, and external services.'
+icon: 'wrench'
+---
+
+Tools are functions that an agent can call during its reasoning loop. When the LLM decides to use a tool, Cortex executes it and feeds the result back into the conversation automatically.
+
+## The Tool Contract
+
+Every tool implements the `Tool` interface with three required methods:
+
+```php
+interface Tool
+{
+    public function name(): string;        // The function name the LLM sees
+    public function description(): string; // What the tool does (shown to the LLM)
+    public function schema(): ObjectSchema; // The input parameters schema
+    public function invoke(ToolCall|array $toolCall, ?RuntimeConfig $config): mixed;
+}
+```
+
+## Tool Types
+
+| Type | Class | Use When |
+|------|-------|----------|
+| Class tool | `AbstractTool` | Reusable tools with complex logic |
+| Closure tool | `ClosureTool` | Quick inline tools |
+| Agent tool | `AgentTool` | Wrapping an agent as a tool |
+| MCP tool | `McpTool` | Tools from an MCP server |
+
+## Prebuilt Tools
+
+Cortex ships with several ready-to-use tools:
+
+| Tool | Description |
+|------|-------------|
+| `GetCurrentWeatherTool` | Fetches current weather for a location via Open-Meteo |
+| `FetchUrlTool` | Fetches the content of a URL |
+| `ReadFileTool` | Reads a file from the filesystem |
+| `ListDirectoryTool` | Lists files in a directory |
+| `ListSkillsTool` | Lists available skills from the skill registry |
+| `ReadSkillTool` | Reads the content of a skill |
+| `UseSkillTool` | Executes a skill |
+
+## Attaching Tools to an Agent
+
+Pass tool class names, instances, or closures to the agent:
+
+```php
+use Cortex\Cortex;
+use Cortex\Tools\Prebuilt\GetCurrentWeatherTool;
+use Cortex\Tools\Prebuilt\FetchUrlTool;
+
+$result = Cortex::agent()
+    ->withPrompt('You are a research assistant.')
+    ->withTools([
+        GetCurrentWeatherTool::class,  // class name (resolved via container)
+        new FetchUrlTool(),            // instance
+        function (string $query): string { // closure
+            return search($query);
+        },
+    ])
+    ->invoke(input: [...]);
+```
+
+## ToolKit
+
+A `ToolKit` is a collection of tools that can be attached to an agent as a group. Implement the `ToolKit` interface:
+
+```php
+use Cortex\Contracts\ToolKit;
+
+class ResearchToolKit implements ToolKit
+{
+    public function getTools(): array
+    {
+        return [
+            new FetchUrlTool(),
+            new ReadFileTool(),
+        ];
+    }
+}
+
+$agent = Cortex::agent()
+    ->withTools(new ResearchToolKit())
+    ->invoke(input: [...]);
+```
+
+## Tool Choice
+
+Control how the LLM selects tools with `ToolChoice`:
+
+```php
+use Cortex\LLM\Enums\ToolChoice;
+
+// Auto — model decides when to use tools (default)
+->withTools([...], ToolChoice::Auto)
+
+// Required — model must use a tool
+->withTools([...], ToolChoice::Required)
+
+// None — model cannot use tools
+->withTools([...], ToolChoice::None)
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Creating Tools" icon="wrench" href="/cortex/tools/creating-tools">
+    Build class-based and closure tools with custom schemas.
+  </Card>
+  <Card title="MCP Tools" icon="plug" href="/cortex/tools/mcp-tools">
+    Connect to MCP servers and use their tools in your agents.
+  </Card>
+</CardGroup>

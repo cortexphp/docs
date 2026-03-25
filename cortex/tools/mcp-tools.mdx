@@ -1,0 +1,101 @@
+---
+title: MCP Tools
+description: 'Use tools from Model Context Protocol servers in your agents.'
+icon: 'plug'
+---
+
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io) is an open standard for connecting AI models to external tools and data sources. Cortex can connect to any MCP server and expose its tools to your agents.
+
+## Configuring MCP Servers
+
+Define your MCP servers in `config/cortex.php`:
+
+```php
+'mcp_servers' => [
+    'default' => env('CORTEX_DEFAULT_MCP_SERVER', 'local_http'),
+
+    'local_http' => [
+        'transport' => 'http',
+        'url'       => 'http://localhost:3001/sse',
+    ],
+
+    'tavily' => [
+        'transport' => 'http',
+        'url'       => 'https://mcp.tavily.com/mcp/?tavilyApiKey=' . env('TAVILY_API_KEY'),
+    ],
+],
+```
+
+## Using an MCP Tool
+
+Create an `McpTool` by specifying the tool name and optionally the server:
+
+```php
+use Cortex\Tools\McpTool;
+use Cortex\Cortex;
+
+$result = Cortex::agent()
+    ->withPrompt('You are a research assistant. Use the search tool to find information.')
+    ->withTools([
+        new McpTool(name: 'search', server: 'tavily'),
+    ])
+    ->invoke([new UserMessage('Latest AI news')]);
+```
+
+If `server` is omitted, the default MCP server from config is used.
+
+## McpToolKit
+
+To expose all tools from an MCP server at once, use `McpToolKit`:
+
+```php
+use Cortex\Tools\ToolKits\McpToolKit;
+use Cortex\Cortex;
+
+$result = Cortex::agent()
+    ->withPrompt('You have access to a suite of tools.')
+    ->withTools(new McpToolKit(server: 'local_http'))
+    ->invoke(input: [...]);
+```
+
+`McpToolKit` connects to the server, fetches the list of available tools, and makes them all available to the agent.
+
+## Using the McpServer Facade
+
+You can interact with MCP servers directly via the `McpServer` facade:
+
+```php
+use Cortex\Facades\McpServer;
+
+// Get a client for a specific server
+$client = McpServer::driver('tavily');
+
+// List available tools
+$tools = $client->listTools();
+
+// Call a tool directly
+$result = $client->callTool('search', ['query' => 'AI news']);
+```
+
+## MCP Prompts
+
+MCP servers can also serve prompts. Use the `mcp` prompt factory to load them:
+
+```php
+use Cortex\Prompts\Prompt;
+
+$prompt = Prompt::factory('mcp')->make('my-mcp-prompt');
+$result = $prompt->llm()->invoke(['variable' => 'value']);
+```
+
+Configure which MCP server to use for prompts in `config/cortex.php`:
+
+```php
+'prompt_factory' => [
+    'mcp' => [
+        'server' => env('CORTEX_MCP_PROMPT_SERVER', 'local_http'),
+    ],
+],
+```
+
+See [Prompt Factories](/cortex/prompts/prompt-factories) for more details.

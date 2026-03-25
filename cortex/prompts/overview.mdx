@@ -1,0 +1,77 @@
+---
+title: Overview
+description: 'Manage and compose prompts with a fluent, typed API.'
+icon: 'file-text'
+---
+
+Cortex provides a first-class prompt system for building reusable, parameterised prompts. Prompts can be defined inline, loaded from external sources (Langfuse, Blade, MCP), and piped directly to an LLM or agent.
+
+## The Three Ways to Create a Prompt
+
+### 1. Inline text prompt
+
+Pass a string to `Cortex::prompt()` to create a text prompt with `{variable}` interpolation:
+
+```php
+use Cortex\Cortex;
+
+$result = Cortex::prompt('What is the capital of {country}?')
+    ->llm()
+    ->invoke(['country' => 'France']);
+```
+
+### 2. Inline chat prompt
+
+Pass an array of message objects to create a multi-turn chat prompt:
+
+```php
+use Cortex\Cortex;
+use Cortex\LLM\Data\Messages\SystemMessage;
+use Cortex\LLM\Data\Messages\UserMessage;
+
+$result = Cortex::prompt([
+    new SystemMessage('You are an expert at geography.'),
+    new UserMessage('What is the capital of {country}?'),
+])
+->llm()
+->invoke(['country' => 'France']);
+```
+
+### 3. From a factory (external source)
+
+Load a prompt by name from Langfuse, a Blade view, or an MCP server:
+
+```php
+$prompt = Cortex::prompt()->factory('langfuse')->make('geography-prompt');
+$result = $prompt->llm()->invoke(['country' => 'France']);
+```
+
+## Variable Interpolation
+
+Variables are denoted with `{curly_braces}` in prompt text. They are replaced at invocation time:
+
+```php
+Cortex::prompt('Hello, {name}! You are {age} years old.')
+    ->llm()
+    ->invoke(['name' => 'Alice', 'age' => 30]);
+```
+
+This works in both text and chat prompts, including inside `SystemMessage` and `UserMessage` content.
+
+## Prompt Types
+
+| Type | Class | Use When |
+|------|-------|----------|
+| Text | `TextPromptBuilder` | Single-string prompts, simple completions |
+| Chat | `ChatPromptBuilder` | Multi-turn conversations, system + user messages |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Prompt Builders" icon="sparkles" href="/cortex/prompts/prompt-builders">
+    The full builder API: metadata, schemas, piping to LLMs and agents.
+  </Card>
+  <Card title="Prompt Factories" icon="server" href="/cortex/prompts/prompt-factories">
+    Load prompts from Langfuse, Blade templates, or MCP servers.
+  </Card>
+</CardGroup>

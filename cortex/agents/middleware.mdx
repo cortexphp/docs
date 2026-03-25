@@ -1,0 +1,146 @@
+---
+title: Middleware
+description: 'Hook into the agent pipeline with before/after middleware.'
+icon: 'layers'
+---
+
+Agent middleware lets you intercept and modify the agent pipeline at three points: before the prompt is formatted, before the LLM is called, and after the LLM responds.
+
+## Middleware Types
+
+| Interface | Fires | Use For |
+|-----------|-------|---------|
+| `BeforePromptMiddleware` | Before the prompt template is rendered | Injecting context, modifying variables |
+| `BeforeModelMiddleware` | After the prompt is rendered, before the LLM call | Logging requests, modifying messages |
+| `AfterModelMiddleware` | After the LLM responds | Logging responses, post-processing output |
+
+## Creating Middleware
+
+Implement the relevant interface and define the `handle()` method:
+
+```php
+use Cortex\Agents\Contracts\BeforeModelMiddleware;
+use Cortex\LLM\Data\Messages\MessageCollection;
+use Cortex\Pipeline\RuntimeConfig;
+
+class LogRequestMiddleware implements BeforeModelMiddleware
+{
+    public function handle(MessageCollection $messages, RuntimeConfig $config, callable $next): mixed
+    {
+        logger()->info('LLM request', [
+            'message_count' => $messages->count(),
+            'thread_id'     => $config->threadId,
+        ]);
+
+        return $next($messages, $config);
+    }
+}
+```
+
+```php
+use Cortex\Agents\Contracts\AfterModelMiddleware;
+use Cortex\LLM\Data\ChatResult;
+use Cortex\Pipeline\RuntimeConfig;
+
+class LogResponseMiddleware implements AfterModelMiddleware
+{
+    public function handle(ChatResult $result, RuntimeConfig $config, callable $next): mixed
+    {
+        logger()->info('LLM response', [
+            'content' => $result->content(),
+            'tokens'  => $result->usage()?->totalTokens,
+        ]);
+
+        return $next($result, $config);
+    }
+}
+```
+
+## Attaching Middleware
+
+### On an agent class
+
+Override `middleware()` in your `AbstractAgentBuilder` subclass:
+
+```php
+public function middleware(): array
+{
+    return [
+        new LogRequestMiddleware(),
+        new LogResponseMiddleware(),
+    ];
+}
+```
+
+### On the builder
+
+```php
+Cortex::agent()
+    ->withPrompt('...')
+    ->withMiddleware([
+        new LogRequestMiddleware(),
+        new LogResponseMiddleware(),
+    ])
+    ->invoke(input: [...]);
+```
+
+### On an Agent instance
+
+Pass middleware to the `Agent` constructor:
+
+```php
+$agent = new Agent(
+    id: 'my_agent',
+    prompt: '...',
+    middleware: [
+        new LogRequestMiddleware(),
+    ],
+);
+```
+
+## Default Middleware
+
+Every agent runs two built-in middleware automatically:
+
+| Middleware | Description |
+|------------|-------------|
+| `AppendUsageMiddleware` | Accumulates token usage across all steps |
+| `AddMessageToMemoryMiddleware` | Saves each LLM response to the agent's memory |
+
+Custom middleware is appended after these defaults.
+
+## Skill Middleware
+
+`SkillMiddleware` is a special built-in middleware used by `SkillsAgent`. It injects skill instructions into the prompt before the model is called, enabling the agent to dynamically load and use skills from the skill registry.
+
+```php
+use Cortex\Agents\Middleware\SkillMiddleware;
+
+$agent = new Agent(
+    id: 'skills_agent',
+    prompt: 'You are a helpful assistant with access to skills.',
+    middleware: [new SkillMiddleware()],
+);
+```
+
+## Using AbstractMiddleware
+
+For convenience, extend `AbstractMiddleware` which provides a `$next` helper and default pass-through behaviour:
+
+```php
+use Cortex\Agents\Middleware\AbstractMiddleware;
+
+class TimingMiddleware extends AbstractMiddleware implements BeforeModelMiddleware
+{
+    public function handle(mixed $payload, RuntimeConfig $config, callable $next): mixed
+    {
+        $start = microtime(true);
+        $result = $next($payload, $config);
+        $elapsed = microtime(true) - $start;
+
+        logger()->info('LLM call took', ['ms' => round($elapsed * 1000)]);
+
+        return $result;
+    }
+}
+```

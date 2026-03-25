@@ -1,0 +1,185 @@
+---
+title: Prompt Builders
+description: 'Build typed, reusable prompts with the fluent builder API.'
+icon: 'sparkles'
+---
+
+Prompt builders let you construct prompts programmatically with full type safety. Both `TextPromptBuilder` and `ChatPromptBuilder` share a common API via the `BuildsPrompts` trait.
+
+## Text Prompt Builder
+
+Use `Prompt::builder('text')` (or `Cortex::prompt('string')` as a shortcut) for single-string prompts:
+
+```php
+use Cortex\Prompts\Prompt;
+
+$builder = Prompt::builder('text')
+    ->text('What is the capital of {country}?');
+
+// Render the prompt with variables
+$formatted = $builder->format(['country' => 'France']);
+// "What is the capital of France?"
+
+// Pipe directly to an LLM
+$result = $builder->llm()->invoke(['country' => 'France']);
+```
+
+## Chat Prompt Builder
+
+Use `Prompt::builder('chat')` (or `Cortex::prompt([...])` as a shortcut) for multi-turn chat prompts:
+
+```php
+use Cortex\Prompts\Prompt;
+use Cortex\LLM\Data\Messages\SystemMessage;
+use Cortex\LLM\Data\Messages\UserMessage;
+
+$builder = Prompt::builder('chat')
+    ->messages([
+        new SystemMessage('You are an expert at geography.'),
+        new UserMessage('What is the capital of {country}?'),
+    ]);
+
+$result = $builder->llm()->invoke(['country' => 'France']);
+```
+
+## Shared Builder API
+
+Both builder types share the following methods from `BuildsPrompts`:
+
+### `metadata()`
+
+Attach LLM configuration directly to the prompt. This is useful when you want a prompt to carry its own model settings:
+
+```php
+use Cortex\JsonSchema\Schema;
+
+$builder = Prompt::builder('text')
+    ->text('What is the capital of {country}?')
+    ->metadata(
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20240620',
+        parameters: ['temperature' => 0.5],
+        structuredOutput: Schema::object()->properties(
+            Schema::string('capital'),
+        ),
+    );
+
+// The prompt now carries its own LLM config — no need to pass provider/model at invocation
+$result = $builder->llm()->invoke(['country' => 'France']);
+```
+
+### `initialVariables()`
+
+Set default variable values that are pre-filled before invocation:
+
+```php
+$builder = Prompt::builder('text')
+    ->text('Translate "{text}" to {language}.')
+    ->initialVariables(['language' => 'French']);
+
+// Only need to supply 'text' at invocation time
+$result = $builder->llm()->invoke(['text' => 'Hello, world!']);
+```
+
+### `inputSchema()` and `inputSchemaProperties()`
+
+Define a schema for the variables your prompt expects. In strict mode, Cortex will throw if required variables are missing:
+
+```php
+use Cortex\JsonSchema\Schema;
+
+$builder = Prompt::builder('text')
+    ->text('What is the capital of {country}?')
+    ->inputSchemaProperties(
+        Schema::string('country')->description('The country name'),
+    );
+```
+
+Or pass a full `ObjectSchema`:
+
+```php
+$builder->inputSchema(
+    Schema::object()->properties(
+        Schema::string('country')->required(),
+    )
+);
+```
+
+### `strict()`
+
+Controls whether missing required input variables throw an exception (default: `true`):
+
+```php
+$builder->strict(false); // Silently allow missing variables
+```
+
+### `build()`
+
+Compile the builder into a `PromptTemplate` instance:
+
+```php
+$template = $builder->build();
+// Returns ChatPromptTemplate or TextPromptTemplate
+```
+
+## Convenience Methods
+
+### `->llm()` — Pipe to an LLM
+
+Build the prompt and return a `Pipeline` that feeds into an LLM:
+
+```php
+$result = Prompt::builder('text')
+    ->text('What is the capital of {country}?')
+    ->llm('openai', 'gpt-4o')
+    ->invoke(['country' => 'France']);
+```
+
+### `->pipe()` — Pipe to any Pipeable
+
+Feed the built prompt into any `Pipeable` (another LLM, an output parser, etc.):
+
+```php
+use Cortex\OutputParsers\JsonOutputParser;
+
+$result = Prompt::builder('text')
+    ->text('List 3 capitals as JSON.')
+    ->pipe(Cortex::llm())
+    ->pipe(new JsonOutputParser())
+    ->invoke();
+```
+
+### `->agent()` — Create an Agent (chat only)
+
+`ChatPromptBuilder` has an additional `->agent()` method that returns a `GenericAgentBuilder` pre-configured with the prompt:
+
+```php
+use Cortex\Prompts\Prompt;
+use Cortex\LLM\Data\Messages\SystemMessage;
+use Cortex\LLM\Data\Messages\UserMessage;
+
+$result = Prompt::builder('chat')
+    ->messages([
+        new SystemMessage('You are an expert at geography.'),
+        new UserMessage('What is the capital of {country}?'),
+    ])
+    ->agent()
+    ->invoke(input: ['country' => 'France']);
+```
+
+### `->format()` — Render the template
+
+Render the prompt with variables without invoking an LLM:
+
+```php
+// Text prompt — returns a string
+$text = Prompt::builder('text')
+    ->text('Hello, {name}!')
+    ->format(['name' => 'Alice']);
+// "Hello, Alice!"
+
+// Chat prompt — returns a MessageCollection
+$messages = Prompt::builder('chat')
+    ->messages([new UserMessage('Hello, {name}!')])
+    ->format(['name' => 'Alice']);
+```

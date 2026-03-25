@@ -1,0 +1,54 @@
+---
+title: Overview
+description: 'Load prompts from external sources — Langfuse, Blade templates, or MCP servers.'
+icon: 'factory'
+---
+
+Prompt factories let you manage prompts outside your codebase and load them by name at runtime. Cortex ships with three factory drivers.
+
+## Basic Usage
+
+```php
+use Cortex\Prompts\Prompt;
+
+// Using the default factory driver
+$prompt = Prompt::factory()->make('my-prompt-name');
+
+// Using a specific driver
+$prompt = Prompt::factory('langfuse')->make('my-prompt-name');
+$prompt = Prompt::factory('blade')->make('geography');
+$prompt = Prompt::factory('mcp')->make('my-mcp-prompt');
+```
+
+Via the `Cortex` facade:
+
+```php
+use Cortex\Cortex;
+
+$prompt = Cortex::prompt()->factory('langfuse')->make('test-prompt');
+$result = $prompt->llm()->invoke(['country' => 'France']);
+```
+
+The returned `$prompt` is a `PromptTemplate` that you can invoke like any other prompt.
+
+## Setting the Default Factory
+
+```bash
+CORTEX_DEFAULT_PROMPT_FACTORY=langfuse
+```
+
+Then `Prompt::factory()` with no argument uses Langfuse.
+
+## Drivers
+
+<CardGroup cols={3}>
+  <Card title="Langfuse" icon="cloud" href="/cortex/prompts/factories/langfuse">
+    Fetch prompts from Langfuse with caching support.
+  </Card>
+  <Card title="Blade" icon="file-code" href="/cortex/prompts/factories/blade">
+    Load prompts from Blade template files.
+  </Card>
+  <Card title="MCP" icon="plug" href="/cortex/prompts/factories/mcp">
+    Fetch prompts from an MCP server.
+  </Card>
+</CardGroup>

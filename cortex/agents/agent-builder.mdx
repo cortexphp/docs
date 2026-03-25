@@ -1,0 +1,164 @@
+---
+title: Agent Builder
+description: 'Configure agents inline with the fluent GenericAgentBuilder API.'
+icon: 'bot-message-square'
+---
+
+`Cortex::agent()` with no arguments returns a `GenericAgentBuilder` — a fluent builder for constructing agents inline without defining a class.
+
+## Basic Usage
+
+```php
+use Cortex\Cortex;
+use Cortex\JsonSchema\Schema;
+use Cortex\Tools\Prebuilt\GetCurrentWeatherTool;
+
+$result = Cortex::agent()
+    ->withId('weather_agent')
+    ->withPrompt('You are a weather agent. You tell the weather in {location}.')
+    ->withLLM('openai', 'gpt-4.1-mini')
+    ->withTools([GetCurrentWeatherTool::class])
+    ->withOutput([
+        Schema::string('location')->required(),
+        Schema::string('summary')->required(),
+    ])
+    ->withMaxSteps(3)
+    ->withStrict(true)
+    ->invoke(input: ['location' => 'London']);
+
+$data = $result->parsedOutput();
+// ['location' => 'London', 'summary' => '...']
+```
+
+## Builder Methods
+
+### `withId(string)`
+
+Sets the agent's identifier. Used when registering the agent in the registry.
+
+```php
+->withId('my_agent')
+```
+
+### `withPrompt(string|ChatPromptBuilder|ChatPromptTemplate)`
+
+Sets the system prompt. Accepts a plain string, a `ChatPromptBuilder`, or a pre-built `ChatPromptTemplate`:
+
+```php
+->withPrompt('You are a helpful assistant.')
+
+// Or a full prompt builder
+->withPrompt(
+    Cortex::prompt([
+        new SystemMessage('You are an expert at {domain}.'),
+    ])
+)
+```
+
+### `withLLM(string|LLM)`
+
+Sets the LLM provider and optionally the model. Accepts a provider name string, a shortcut string, or an LLM instance:
+
+```php
+->withLLM('openai')
+->withLLM('anthropic', 'claude-3-7-sonnet-20250219')
+->withLLM('lmstudio/openai/gpt-oss-20b')
+->withLLM(Cortex::llm('groq')->withTemperature(0.3))
+```
+
+### `withTools(array)`
+
+Attaches tools the agent can call. Accepts class names, instances, or closures:
+
+```php
+->withTools([
+    GetCurrentWeatherTool::class,
+    FetchUrlTool::class,
+    function (string $query): string {
+        return search($query);
+    },
+])
+```
+
+### `withOutput(array|ObjectSchema|string)`
+
+Defines the structured output schema. The agent will parse and validate the LLM response against this schema:
+
+```php
+// Array of JsonSchema properties (wrapped in ObjectSchema automatically)
+->withOutput([
+    Schema::string('name')->required(),
+    Schema::integer('age')->required(),
+])
+
+// Full ObjectSchema
+->withOutput(Schema::object()->properties(
+    Schema::string('name')->required(),
+))
+
+// PHP class
+->withOutput(MyResponseClass::class)
+```
+
+### `withMaxSteps(int)`
+
+Maximum number of tool-call iterations before the agent stops. Default: `5`.
+
+```php
+->withMaxSteps(10)
+```
+
+### `withStrict(bool)`
+
+When `true`, the agent enforces the input schema and structured output schema strictly. Default: `true`.
+
+```php
+->withStrict(false)
+```
+
+### `withMiddleware(array)`
+
+Attach custom middleware to the agent pipeline. See [Middleware](/cortex/agents/middleware).
+
+```php
+->withMiddleware([new MyLoggingMiddleware()])
+```
+
+### `withInitialPromptVariables(array)`
+
+Pre-fill prompt variables that are fixed for the lifetime of the agent:
+
+```php
+->withInitialPromptVariables(['language' => 'French'])
+```
+
+## Invoking the Built Agent
+
+The builder exposes `invoke()` and `stream()` directly, which internally call `build()->invoke()`:
+
+```php
+// Blocking
+$result = Cortex::agent()
+    ->withPrompt('...')
+    ->invoke(input: ['key' => 'value']);
+
+// Streaming
+$stream = Cortex::agent()
+    ->withPrompt('...')
+    ->stream(input: ['key' => 'value']);
+```
+
+## Getting the Agent Instance
+
+If you need the `Agent` object itself (e.g. to register it or attach event listeners), call `build()`:
+
+```php
+$agent = Cortex::agent()
+    ->withId('my_agent')
+    ->withPrompt('...')
+    ->build();
+
+$agent->onEnd(fn($e) => logger()->info('Done'));
+
+$result = $agent->invoke(input: [...]);
+```

@@ -1,0 +1,153 @@
+---
+title: Structured Output
+description: 'Extract typed, validated data from LLM responses.'
+icon: 'layers'
+---
+
+Structured output instructs the LLM to return a response that conforms to a specific schema. Cortex validates and parses the response automatically.
+
+## Using a Schema
+
+Define your schema with `Schema::object()` and pass it to `withStructuredOutput()`:
+
+```php
+use Cortex\Cortex;
+use Cortex\JsonSchema\Schema;
+use Cortex\LLM\Data\Messages\UserMessage;
+
+$schema = Schema::object()->properties(
+    Schema::string('capital')->required(),
+    Schema::string('country')->required(),
+);
+
+$result = Cortex::llm()
+    ->withStructuredOutput($schema)
+    ->invoke([
+        new UserMessage('What is the capital of France?'),
+    ]);
+
+$data = $result->parsedOutput;
+// ['capital' => 'Paris', 'country' => 'France']
+```
+
+<Note>
+For more information about the JSON Schema capabilities of Cortex, see the [JSON Schema documentation](/json-schema).
+</Note>
+
+## Schema Types
+
+`Schema` provides factory methods for all JSON Schema types:
+
+```php
+Schema::string('name')->required()->description('The person\'s name');
+Schema::integer('age')->minimum(0)->maximum(150);
+Schema::number('score')->required();
+Schema::boolean('active');
+Schema::array('tags')->items(Schema::string());
+Schema::object('address')->properties(
+    Schema::string('street')->required(),
+    Schema::string('city')->required(),
+);
+Schema::enum('status', ['active', 'inactive', 'pending']);
+```
+
+## Using a PHP Class
+
+You can use a PHP class or DTO as the output schema. Cortex reflects the class properties to build the schema automatically:
+
+```php
+class CapitalResponse
+{
+    public string $capital;
+    public string $country;
+}
+
+$result = Cortex::llm()
+    ->withStructuredOutput(CapitalResponse::class)
+    ->invoke([new UserMessage('What is the capital of France?')]);
+
+$output = $result->parsedOutput; // CapitalResponse instance
+echo $output->capital; // "Paris"
+```
+
+## Using an Enum
+
+Pass a backed enum class to extract a single enum value:
+
+```php
+enum Sentiment: string
+{
+    case Positive = 'positive';
+    case Negative = 'negative';
+    case Neutral  = 'neutral';
+}
+
+$result = Cortex::llm()
+    ->withStructuredOutput(Sentiment::class)
+    ->invoke([new UserMessage('I love this product!')]);
+
+$sentiment = $result->parsedOutput; // Sentiment::Positive
+```
+
+## Structured Output on Prompts
+
+You can also specify structured output on a prompt builder via `metadata()`:
+
+```php
+use Cortex\Cortex;
+use Cortex\JsonSchema\Schema;
+
+$prompt = Cortex::prompt('What is the capital of {country}?')
+    ->metadata(
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20240620',
+        structuredOutput: Schema::object()->properties(
+            Schema::string('capital'),
+        ),
+    );
+
+$result = $prompt->llm()->invoke(['country' => 'France']);
+```
+
+## Structured Output on Agents
+
+Pass an output schema to an agent via `withOutput()` or the `output` constructor parameter:
+
+```php
+use Cortex\Cortex;
+use Cortex\JsonSchema\Schema;
+
+$agent = Cortex::agent()
+    ->withPrompt('You are a geography expert.')
+    ->withOutput([
+        Schema::string('capital')->required(),
+        Schema::string('population')->required(),
+    ]);
+
+$result = $agent->invoke(input: ['country' => 'France']);
+$data = $result->parsedOutput;
+// ['capital' => 'Paris', 'population' => '...']
+```
+
+<Note>
+When passing an array to `withOutput()`, each element must be a `JsonSchema` instance. Cortex wraps them in an `ObjectSchema` automatically.
+</Note>
+
+## Output Modes
+
+Cortex supports three structured output modes, controlled by `StructuredOutputMode`:
+
+| Mode | Behaviour |
+|------|-----------|
+| `Auto` | Cortex picks the best mode for the model (default) |
+| `JsonSchema` | Uses the provider's native JSON schema enforcement |
+| `ToolCall` | Uses a hidden tool call to extract structured data |
+
+```php
+use Cortex\LLM\Enums\StructuredOutputMode;
+
+Cortex::llm()->withStructuredOutput(
+    $schema,
+    outputMode: StructuredOutputMode::ToolCall,
+);
+```

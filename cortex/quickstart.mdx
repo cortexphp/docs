@@ -1,0 +1,112 @@
+---
+title: Quick Start
+description: 'Make your first LLM call, use a prompt, and build an agent.'
+icon: 'rocket'
+---
+
+<Note>
+  Make sure you've completed [Installation](/cortex/installation) before continuing.
+</Note>
+
+## Call an LLM
+
+The simplest way to use Cortex is to call an LLM directly:
+
+```php
+use Cortex\Cortex;
+use Cortex\LLM\Data\Messages\UserMessage;
+
+$result = Cortex::llm()->invoke([
+    new UserMessage('What is the capital of France?'),
+]);
+
+echo $result->content(); // "The capital of France is Paris."
+```
+
+## Use a Prompt with Variables
+
+Prompts let you define reusable templates with `{variable}` placeholders:
+
+```php
+use Cortex\Cortex;
+
+$result = Cortex::prompt('What is the capital of {country}?')
+    ->llm()
+    ->invoke(['country' => 'France']);
+```
+
+For multi-message (chat) prompts:
+
+```php
+use Cortex\Cortex;
+use Cortex\LLM\Data\Messages\SystemMessage;
+use Cortex\LLM\Data\Messages\UserMessage;
+
+$result = Cortex::prompt([
+    new SystemMessage('You are an expert at geography.'),
+    new UserMessage('What is the capital of {country}?'),
+])
+->llm()
+->invoke(['country' => 'France']);
+```
+
+## Build an Agent
+
+Agents combine a prompt, an LLM, and tools to complete multi-step tasks:
+
+```php
+use Cortex\Cortex;
+use Cortex\JsonSchema\Schema;
+use Cortex\Tools\Prebuilt\GetCurrentWeatherTool;
+
+$result = Cortex::agent()
+    ->withPrompt('You are a weather assistant. Tell the user about the weather in {location}.')
+    ->withTools([GetCurrentWeatherTool::class])
+    ->withOutput([
+        Schema::string('location')->required(),
+        Schema::string('summary')->required(),
+    ])
+    ->invoke(input: ['location' => 'London']);
+
+$parsed = $result->parsedOutput(); // ['location' => 'London', 'summary' => '...']
+```
+
+## Register and Reuse Agents
+
+For agents you use repeatedly, define them as a class and register them:
+
+```php
+// In a service provider
+use Cortex\Cortex;
+use App\Agents\WeatherAgent;
+
+public function boot(): void
+{
+    Cortex::registerAgent(WeatherAgent::class);
+}
+```
+
+Then invoke by ID anywhere in your application:
+
+```php
+$result = Cortex::agent('weather')->invoke(
+    input: ['location' => 'Paris'],
+);
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="LLM Overview" icon="cpu" href="/cortex/llm/overview">
+    Configure providers, set parameters, and use structured output.
+  </Card>
+  <Card title="Prompt Builders" icon="file-text" href="/cortex/prompts/prompt-builders">
+    Build reusable, typed prompts with metadata and variable schemas.
+  </Card>
+  <Card title="Agents Overview" icon="bot" href="/cortex/agents/overview">
+    Understand how agents work with memory, tools, and multi-step reasoning.
+  </Card>
+  <Card title="Creating Tools" icon="wrench" href="/cortex/tools/creating-tools">
+    Give your agents custom capabilities by building your own tools.
+  </Card>
+</CardGroup>

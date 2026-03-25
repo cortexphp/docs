@@ -1,0 +1,84 @@
+---
+title: Anthropic
+description: 'Configure and use Anthropic Claude models including extended thinking.'
+icon: 'https://models.dev/logos/anthropic.svg'
+---
+
+Cortex supports Anthropic via a native driver that uses the [Anthropic Messages API](https://docs.anthropic.com/en/api/messages).
+
+## Configuration
+
+```php
+// config/cortex.php
+'anthropic' => [
+    'driver' => LLMDriver::Anthropic,
+    'options' => [
+        'api_key' => env('ANTHROPIC_API_KEY', ''),
+        'headers' => [],
+    ],
+    'default_model'      => 'claude-3-7-sonnet-20250219',
+    'default_parameters' => [
+        'temperature' => null,
+        'max_tokens'  => 1024,
+        'top_p'       => null,
+    ],
+],
+```
+
+Add your API key to `.env`:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+## Usage
+
+```php
+use Cortex\Cortex;
+
+// Use the default Anthropic model
+$result = Cortex::llm('anthropic')->invoke([...]);
+
+// Specify a model
+$result = Cortex::llm('anthropic', 'claude-3-5-haiku-20241022')->invoke([...]);
+
+// Shortcut syntax
+$result = Cortex::llm('anthropic/claude-opus-4-5')->invoke([...]);
+```
+
+## Available Models
+
+| Model | Description |
+|-------|-------------|
+| `claude-3-7-sonnet-20250219` | Latest Sonnet — best balance of speed and intelligence (default) |
+| `claude-opus-4-5` | Most capable Claude model |
+| `claude-3-5-haiku-20241022` | Fastest and most compact Claude model |
+
+## Custom Headers
+
+Pass additional headers to every request via the `headers` option — useful for Anthropic's beta features:
+
+```php
+'options' => [
+    'api_key' => env('ANTHROPIC_API_KEY', ''),
+    'headers' => [
+        'anthropic-beta' => 'interleaved-thinking-2025-05-14',
+    ],
+],
+```
+
+## Using via Amazon Bedrock
+
+To use Claude through Amazon Bedrock, add a separate provider entry:
+
+```php
+'bedrock' => [
+    'driver' => LLMDriver::Anthropic,
+    'options' => [
+        'api_key'  => env('AWS_ACCESS_KEY_ID', ''),
+        'base_uri' => env('BEDROCK_BASE_URI'), // e.g. https://bedrock-runtime.us-east-1.amazonaws.com
+    ],
+    'default_model'      => 'anthropic.claude-3-7-sonnet-20250219-v1:0',
+    'default_parameters' => ['max_tokens' => 1024],
+],
+```

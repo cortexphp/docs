@@ -1,0 +1,166 @@
+---
+title: Pipelines
+description: 'Compose LLMs, prompts, agents, and parsers into chainable pipelines.'
+icon: 'workflow'
+---
+
+The `Pipeline` class is the execution engine behind Cortex. It chains together `Pipeable` stages — prompts, LLMs, agents, output parsers, or custom closures — passing the output of each stage as the input to the next.
+
+Agents use pipelines internally, but you can also build pipelines directly for more complex workflows.
+
+## Basic Usage
+
+```php
+use Cortex\Pipeline;
+use Cortex\Cortex;
+use Cortex\LLM\Data\Messages\UserMessage;
+
+$result = (new Pipeline())
+    ->pipe(Cortex::llm('openai'))
+    ->invoke([new UserMessage('What is the capital of France?')]);
+
+echo $result->content(); // "The capital of France is Paris."
+```
+
+## Chaining Stages
+
+Pipe a prompt template into an LLM, then into an output parser:
+
+```php
+use Cortex\Pipeline;
+use Cortex\Cortex;
+use Cortex\OutputParsers\JsonOutputParser;
+
+$result = (new Pipeline())
+    ->pipe(Cortex::prompt('List 3 capitals as a JSON array.')->build())
+    ->pipe(Cortex::llm())
+    ->pipe(new JsonOutputParser())
+    ->invoke();
+
+// $result is a decoded PHP array
+```
+
+## Closure Stages
+
+Any callable that accepts `($payload, RuntimeConfig $config, callable $next)` can be a stage:
+
+```php
+use Cortex\Pipeline\RuntimeConfig;
+
+$result = (new Pipeline())
+    ->pipe(Cortex::llm())
+    ->pipe(function (mixed $payload, RuntimeConfig $config, callable $next): mixed {
+        logger()->info('LLM responded', ['content' => $payload->content()]);
+        return $next($payload, $config);
+    })
+    ->invoke([new UserMessage('Hello')]);
+```
+
+## Streaming
+
+Enable streaming for all LLM stages in the pipeline:
+
+```php
+$stream = (new Pipeline())
+    ->pipe(Cortex::llm())
+    ->stream([new UserMessage('Tell me a story.')]);
+
+foreach ($stream as $chunk) {
+    echo $chunk->content();
+}
+```
+
+## Parallel Stages
+
+Pass an array of stages to `pipe()` to execute them in parallel (powered by amphp):
+
+```php
+$result = (new Pipeline())
+    ->pipe([
+        Cortex::llm('openai'),
+        Cortex::llm('anthropic'),
+    ])
+    ->invoke([new UserMessage('Summarise AI in one sentence.')]);
+```
+
+The results of parallel stages are merged into a single payload.
+
+## Output Parsers
+
+Use `->output()` as a shorthand for piping an output parser:
+
+```php
+use Cortex\OutputParsers\JsonOutputParser;
+use Cortex\OutputParsers\XmlOutputParser;
+use Cortex\OutputParsers\StringOutputParser;
+
+$pipeline = (new Pipeline())
+    ->pipe(Cortex::llm())
+    ->output(new JsonOutputParser());
+```
+
+Available output parsers:
+
+| Parser | Description |
+|--------|-------------|
+| `JsonOutputParser` | Parses JSON from the response |
+| `XmlOutputParser` | Parses XML from the response |
+| `XmlTagOutputParser` | Extracts content from a specific XML tag |
+| `StringOutputParser` | Returns the raw string content |
+| `ClassOutputParser` | Maps JSON to a PHP class |
+| `EnumOutputParser` | Maps the response to a backed enum |
+| `StructuredOutputParser` | Parses structured output from tool calls |
+
+## Lifecycle Events
+
+Register callbacks for pipeline lifecycle events:
+
+```php
+$pipeline = (new Pipeline())
+    ->pipe(Cortex::llm())
+    ->onStart(fn($event) => logger()->info('Pipeline started'))
+    ->onEnd(fn($event) => logger()->info('Pipeline finished'))
+    ->onError(fn($event) => logger()->error('Pipeline error', ['e' => $event->exception]))
+    ->onStageStart(fn($event) => logger()->debug('Stage started'))
+    ->onStageEnd(fn($event) => logger()->debug('Stage finished'));
+```
+
+## Error Handling
+
+Use `catch()` to handle exceptions without re-throwing, and `finally()` to run cleanup logic:
+
+```php
+$pipeline = (new Pipeline())
+    ->pipe(Cortex::llm())
+    ->catch(function (Throwable $e, RuntimeConfig $config): void {
+        logger()->error('Pipeline failed', ['error' => $e->getMessage()]);
+    })
+    ->finally(function (RuntimeConfig $config, mixed $payload, Pipeline $pipeline): void {
+        // Always runs, even on error
+        Cache::forget('pipeline-lock');
+    });
+```
+
+## RuntimeConfig
+
+`RuntimeConfig` is passed through every stage and carries request-level state:
+
+```php
+use Cortex\Pipeline\RuntimeConfig;
+use Cortex\Pipeline\State;
+
+$config = new RuntimeConfig(
+    threadId: 'user-123-session',
+    runId: 'run-abc',
+    state: new State(['locale' => 'en', 'user_id' => 42]),
+);
+
+$result = $pipeline->invoke($payload, $config);
+```
+
+Access state inside a tool or middleware:
+
+```php
+$locale = $config->context->get('locale');
+$userId = $config->context->get('user_id');
+```

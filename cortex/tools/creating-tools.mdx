@@ -1,0 +1,156 @@
+---
+title: Creating Tools
+description: 'Build custom tools as classes or closures.'
+icon: 'wrench'
+---
+
+## Class-Based Tools
+
+Extend `AbstractTool` for reusable tools with complex logic. You must implement `name()`, `description()`, `schema()`, and `invoke()`:
+
+```php
+use Cortex\JsonSchema\Schema;
+use Cortex\LLM\Data\ToolCall;
+use Cortex\Tools\AbstractTool;
+use Cortex\Pipeline\RuntimeConfig;
+use Cortex\JsonSchema\Types\ObjectSchema;
+
+class SearchDatabaseTool extends AbstractTool
+{
+    public function name(): string
+    {
+        return 'search_database';
+    }
+
+    public function description(): string
+    {
+        return 'Search the product database for items matching a query.';
+    }
+
+    public function schema(): ObjectSchema
+    {
+        return Schema::object()->properties(
+            Schema::string('query')->required()->description('The search query'),
+            Schema::integer('limit')->default(10)->description('Max results to return'),
+        );
+    }
+
+    public function invoke(ToolCall|array $toolCall = [], ?RuntimeConfig $config = null): mixed
+    {
+        $args = $this->getArguments($toolCall);
+
+        $this->schema()->validate($args);
+
+        return Product::search($args['query'])
+            ->take($args['limit'] ?? 10)
+            ->get()
+            ->toArray();
+    }
+}
+```
+
+Then use it in an agent:
+
+```php
+$result = Cortex::agent()
+    ->withPrompt('You are a product search assistant.')
+    ->withTools([SearchDatabaseTool::class])
+    ->invoke(input: [...]);
+```
+
+## Accessing Runtime Context
+
+The `RuntimeConfig` passed to `invoke()` carries request-level context. You can read values from `$config->context`:
+
+```php
+public function invoke(ToolCall|array $toolCall = [], ?RuntimeConfig $config = null): mixed
+{
+    $args = $this->getArguments($toolCall);
+    $locale = $config?->context?->get('locale') ?? 'en';
+
+    return $this->search($args['query'], $locale);
+}
+```
+
+## Closure Tools
+
+For simple, inline tools, pass a closure directly to `withTools()`. Cortex wraps it in a `ClosureTool` automatically:
+
+```php
+$result = Cortex::agent()
+    ->withPrompt('You are a calculator assistant.')
+    ->withTools([
+        /**
+         * Add two numbers together.
+         */
+        function (float $a, float $b): float {
+            return $a + $b;
+        },
+    ])
+    ->invoke(input: [...]);
+```
+
+Cortex uses reflection to build the tool schema from the closure's parameter types and docblock.
+
+### The `#[Tool]` Attribute
+
+Use the `#[Tool]` attribute to explicitly set the name and description:
+
+```php
+use Cortex\Attributes\Tool;
+
+$result = Cortex::agent()
+    ->withTools([
+        #[Tool(name: 'add_numbers', description: 'Add two numbers together')]
+        function (float $a, float $b): float {
+            return $a + $b;
+        },
+    ])
+    ->invoke(messages: [new UserMessage('Add 2 and 3')]);
+```
+
+### Schema from Closure
+
+You can also generate a schema from a closure explicitly using `Schema::fromClosure()`:
+
+```php
+use Cortex\JsonSchema\Schema;
+
+$schema = Schema::fromClosure(function (string $query, int $limit = 10): void {});
+// ObjectSchema with 'query' (required string) and 'limit' (integer, default 10)
+```
+
+## Building a ClosureTool Explicitly
+
+If you need more control, instantiate `ClosureTool` directly:
+
+```php
+use Cortex\Tools\ClosureTool;
+
+$tool = new ClosureTool(
+    closure: fn(string $city): array => $this->getWeather($city),
+    name: 'get_weather',
+    description: 'Get the current weather for a city.',
+);
+```
+
+## Returning Tool Results
+
+Tool `invoke()` can return any value. Cortex serialises it for the LLM:
+
+- **string** — returned as-is
+- **array** — JSON-encoded
+- **object** — JSON-encoded via `json_encode()`
+- **null** — sent as an empty string
+
+```php
+// Return a string
+return 'The weather in Paris is sunny, 22°C.';
+
+// Return structured data (will be JSON-encoded)
+return [
+    'temperature' => 22,
+    'conditions'  => 'Sunny',
+    'city'        => 'Paris',
+];
+```

@@ -1,0 +1,76 @@
+---
+title: Langfuse
+description: 'Load prompts from Langfuse with optional caching.'
+icon: 'cloud'
+---
+
+[Langfuse](https://langfuse.com) is a prompt management and observability platform. Cortex fetches prompts from the Langfuse API by name and returns them as a ready-to-invoke `PromptTemplate`.
+
+## Configuration
+
+```php
+// config/cortex.php
+'prompt_factory' => [
+    'default' => env('CORTEX_DEFAULT_PROMPT_FACTORY', 'langfuse'),
+
+    'langfuse' => [
+        'username' => env('LANGFUSE_USERNAME', ''),
+        'password' => env('LANGFUSE_PASSWORD', ''),
+        'base_uri' => env('LANGFUSE_BASE_URI', 'https://cloud.langfuse.com'),
+        'cache' => [
+            'enabled' => env('CORTEX_PROMPT_CACHE_ENABLED', false),
+            'store'   => env('CORTEX_PROMPT_CACHE_STORE'),
+            'ttl'     => env('CORTEX_PROMPT_CACHE_TTL', 3600),
+        ],
+    ],
+],
+```
+
+Add your credentials to `.env`:
+
+```bash
+LANGFUSE_USERNAME=pk-lf-...
+LANGFUSE_PASSWORD=sk-lf-...
+LANGFUSE_BASE_URI=https://cloud.langfuse.com
+```
+
+## Usage
+
+```php
+use Cortex\Prompts\Prompt;
+
+$prompt = Prompt::factory('langfuse')->make('geography-expert');
+
+$result = $prompt->llm()->invoke(['country' => 'France']);
+```
+
+The prompt name must match the **slug** of the prompt in your Langfuse project. Langfuse prompts can be text or chat type — Cortex handles both automatically.
+
+When Langfuse is set as the default factory, you can omit the driver name:
+
+```php
+$prompt = Prompt::factory()->make('geography-expert');
+```
+
+Or via the `Cortex` facade:
+
+```php
+use Cortex\Cortex;
+
+$prompt = Cortex::prompt()->factory('langfuse')->make('geography-expert');
+$result = $prompt->llm()->invoke(['country' => 'France']);
+```
+
+## Caching
+
+Enable caching to avoid hitting the Langfuse API on every request:
+
+```bash
+CORTEX_PROMPT_CACHE_ENABLED=true
+CORTEX_PROMPT_CACHE_STORE=redis
+CORTEX_PROMPT_CACHE_TTL=3600
+```
+
+<Note>
+Caching is strongly recommended in production. Without it, every invocation makes an HTTP request to Langfuse.
+</Note>

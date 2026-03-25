@@ -1,0 +1,56 @@
+---
+title: Overview
+description: 'All supported LLM providers and how to configure them.'
+icon: 'server'
+---
+
+Cortex ships with support for the following providers out of the box. All are configured in `config/cortex.php` under the `llm` key.
+
+## Supported Providers
+
+| Provider | Config Key | Driver | API Key Env Var |
+|----------|------------|--------|-----------------|
+| OpenAI | `openai` | `openai_responses` | `OPENAI_API_KEY` |
+| Anthropic | `anthropic` | `anthropic` | `ANTHROPIC_API_KEY` |
+| Ollama | `ollama` | `openai_chat` | — (local) |
+| LM Studio | `lmstudio` | `openai_responses` | — (local) |
+| Groq | `groq` | `openai_chat` | `GROQ_API_KEY` |
+| xAI (Grok) | `xai` | `openai_chat` | `XAI_API_KEY` |
+| Google Gemini | `gemini` | `openai_chat` | `GEMINI_API_KEY` |
+| Mistral | `mistral` | `openai_chat` | `MISTRAL_API_KEY` |
+| Together AI | `together` | `openai_chat` | `TOGETHER_API_KEY` |
+| OpenRouter | `openrouter` | `openai_chat` | `OPENROUTER_API_KEY` |
+| DeepSeek | `deepseek` | `openai_chat` | `DEEPSEEK_API_KEY` |
+| GitHub Models | `github` | `openai_chat` | `GITHUB_API_KEY` |
+
+## Drivers
+
+There are three underlying drivers:
+
+- **`openai_responses`** — Uses the OpenAI Responses API. Supports the latest OpenAI features including reasoning models.
+- **`openai_chat`** — Uses the OpenAI Chat Completions API. Compatible with any OpenAI-compatible endpoint (Ollama, Groq, Gemini, etc.).
+- **`anthropic`** — Uses the Anthropic Messages API natively.
+
+## Changing the Default Provider
+
+Set the default provider in your `.env`:
+
+```bash
+CORTEX_DEFAULT_LLM=anthropic
+```
+
+Now `Cortex::llm()` with no arguments will use Anthropic.
+
+## Provider Guides
+
+<CardGroup cols={3}>
+  <Card title="OpenAI" icon="https://models.dev/logos/openai.svg" href="/cortex/llm/providers/openai">
+    OpenAI Chat and Responses API, including reasoning models.
+  </Card>
+  <Card title="Anthropic" icon="https://models.dev/logos/anthropic.svg" href="/cortex/llm/providers/anthropic">
+    Anthropic Claude models with extended thinking support.
+  </Card>
+  <Card title="Other Providers" icon="server" href="/cortex/llm/providers/other">
+    Ollama, LM Studio, Groq, Gemini, Mistral, and more.
+  </Card>
+</CardGroup>

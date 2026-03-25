@@ -1,0 +1,221 @@
+---
+title: Configuration
+description: 'A reference for all options in config/cortex.php.'
+icon: 'settings'
+---
+
+Publish the config file if you haven't already:
+
+```bash
+php artisan vendor:publish --tag=cortex-config
+```
+
+This creates `config/cortex.php` with the following sections.
+
+---
+
+## LLM Providers
+
+```php config/cortex.php
+'llm' => [
+    'default' => env('CORTEX_DEFAULT_LLM', 'openai'),
+    ...
+]
+```
+
+The `default` key controls which provider is used when you call `Cortex::llm()` with no arguments.
+
+### Cache
+
+```php
+'cache' => [
+    'enabled' => env('CORTEX_LLM_CACHE_ENABLED', false),
+    'store'   => env('CORTEX_LLM_CACHE_STORE'),
+    'ttl'     => env('CORTEX_LLM_CACHE_TTL', 3600),
+],
+```
+
+When enabled, identical LLM requests are cached. Useful for development and testing.
+
+### Provider Configuration
+
+Each provider entry follows the same shape:
+
+```php
+'openai' => [
+    'driver'             => LLMDriver::OpenAIResponses,
+    'options'            => [
+        'api_key'      => env('OPENAI_API_KEY', ''),
+        'base_uri'     => env('OPENAI_BASE_URI'),
+        'organization' => env('OPENAI_ORGANIZATION'),
+    ],
+    'default_model'      => 'gpt-4.1-mini',
+    'default_parameters' => [
+        'temperature'      => null,
+        'max_output_tokens' => 1024,
+        'top_p'            => null,
+    ],
+],
+```
+
+| Key | Description |
+|-----|-------------|
+| `driver` | The underlying driver: `openai_chat`, `openai_responses`, or `anthropic` |
+| `options` | Provider-specific connection options (API key, base URI, etc.) |
+| `default_model` | The model used when none is specified |
+| `default_parameters` | Default generation parameters sent with every request |
+
+### Built-in Providers
+
+| Provider | Driver | Env Var |
+|----------|--------|---------|
+| `openai` | `openai_responses` | `OPENAI_API_KEY` |
+| `anthropic` | `anthropic` | `ANTHROPIC_API_KEY` |
+| `ollama` | `openai_chat` | `OLLAMA_BASE_URI` |
+| `lmstudio` | `openai_responses` | `LMSTUDIO_BASE_URI` |
+| `groq` | `openai_chat` | `GROQ_API_KEY` |
+| `xai` | `openai_chat` | `XAI_API_KEY` |
+| `gemini` | `openai_chat` | `GEMINI_API_KEY` |
+| `mistral` | `openai_chat` | `MISTRAL_API_KEY` |
+| `together` | `openai_chat` | `TOGETHER_API_KEY` |
+| `openrouter` | `openai_chat` | `OPENROUTER_API_KEY` |
+| `deepseek` | `openai_chat` | `DEEPSEEK_API_KEY` |
+| `github` | `openai_chat` | `GITHUB_API_KEY` |
+
+---
+
+## MCP Servers
+
+```php
+'mcp_servers' => [
+    'default' => env('CORTEX_DEFAULT_MCP_SERVER', 'local_http'),
+
+    'local_http' => [
+        'transport' => 'http',
+        'url'       => 'http://localhost:3001/sse',
+    ],
+
+    'tavily' => [
+        'transport' => 'http',
+        'url'       => 'https://mcp.tavily.com/mcp/?tavilyApiKey=' . env('TAVILY_API_KEY'),
+    ],
+],
+```
+
+MCP servers can be used as tool sources or prompt factories. See [MCP Tools](/cortex/tools/mcp-tools) for usage.
+
+---
+
+## Prompt Factories
+
+```php
+'prompt_factory' => [
+    'default' => env('CORTEX_DEFAULT_PROMPT_FACTORY', 'langfuse'),
+    ...
+]
+```
+
+### Langfuse
+
+```php
+'langfuse' => [
+    'username' => env('LANGFUSE_USERNAME', ''),
+    'password' => env('LANGFUSE_PASSWORD', ''),
+    'base_uri' => env('LANGFUSE_BASE_URI', 'https://cloud.langfuse.com'),
+    'cache' => [
+        'enabled' => env('CORTEX_PROMPT_CACHE_ENABLED', false),
+        'store'   => env('CORTEX_PROMPT_CACHE_STORE'),
+        'ttl'     => env('CORTEX_PROMPT_CACHE_TTL', 3600),
+    ],
+],
+```
+
+### Blade
+
+```php
+'blade' => [
+    'path' => 'resources/views/prompts',
+],
+```
+
+### MCP
+
+```php
+'mcp' => [
+    'server' => env('CORTEX_MCP_PROMPT_SERVER', 'local_http'),
+],
+```
+
+See [Prompt Factories](/cortex/prompts/prompt-factories) for full usage details.
+
+---
+
+## Embeddings
+
+```php
+'embedding' => [
+    'default' => env('CORTEX_DEFAULT_EMBEDDING_DRIVER', 'openai'),
+
+    'openai' => [
+        'driver'             => 'openai',
+        'options'            => ['api_key' => env('OPENAI_API_KEY', '')],
+        'default_model'      => 'text-embedding-3-small',
+        'default_dimensions' => 1536,
+    ],
+
+    'ollama' => [
+        'driver'             => 'ollama',
+        'options'            => ['base_url' => env('OLLAMA_BASE_URI', 'http://localhost:1234')],
+        'default_model'      => 'nomic-embed-text',
+        'default_dimensions' => 768,
+    ],
+],
+```
+
+---
+
+## Model Info
+
+```php
+'model_info' => [
+    'ignore_features' => env('CORTEX_MODEL_INFO_IGNORE_FEATURES', true),
+    'providers'       => [
+        OllamaModelInfoProvider::class   => ['host' => env('OLLAMA_BASE_URI')],
+        LMStudioModelInfoProvider::class => ['host' => env('LMSTUDIO_BASE_URI')],
+        LiteLLMModelInfoProvider::class  => ['host' => env('LITELLM_BASE_URI'), 'apiKey' => env('LITELLM_API_KEY')],
+    ],
+],
+```
+
+When `ignore_features` is `false`, Cortex checks whether a model supports a requested feature (e.g. structured output, tool use) before attempting to use it. Set to `true` to skip these checks.
+
+---
+
+## Agents
+
+```php
+'agents' => [
+    WeatherAgent::class,
+],
+```
+
+Classes listed here are automatically registered in the agent registry on boot. You can also register agents manually in a service provider:
+
+```php
+use Cortex\Cortex;
+
+public function boot(): void
+{
+    Cortex::registerAgent(WeatherAgent::class);
+}
+```
+
+---
+
+## Default Streaming Protocol
+
+```php
+'default_streaming_protocol' => StreamingProtocol::Vercel,
+```
+
+Controls the default wire format for streaming responses. Options: `Vercel`, `AGUI`, `Raw`, `Text`. See [Streaming](/cortex/llm/streaming) for details.

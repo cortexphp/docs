@@ -1,0 +1,129 @@
+---
+title: Overview
+description: 'Build autonomous agents that reason, use tools, and maintain memory.'
+icon: 'bot'
+---
+
+An agent in Cortex is a combination of a **prompt**, an **LLM**, and optional **tools**. When invoked, the agent runs a pipeline that handles the full tool-call loop: calling the LLM, executing any requested tools, feeding results back, and repeating until the model produces a final response or the step limit is reached.
+
+## Creating an Agent
+
+The simplest way to create an agent is with the `Agent` class directly:
+
+```php
+use Cortex\Agents\Agent;
+
+$agent = new Agent(
+    id: 'joke_generator',
+    prompt: 'You are a joke generator. You generate jokes about {topic}.',
+    llm: 'openai',
+);
+
+$result = $agent->invoke(input: ['topic' => 'programming']);
+
+echo $result->content();
+```
+
+## Invoking an Agent
+
+Agents have two invocation methods:
+
+```php
+// Blocking — waits for the full response
+$result = $agent->invoke(input: ['topic' => 'programming']);
+
+// Streaming — returns a ChatStreamResult
+$stream = $agent->stream(input: ['topic' => 'programming']);
+foreach ($stream as $chunk) {
+    echo $chunk->content();
+}
+```
+
+Both methods accept:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `messages` | `array\|MessageCollection\|string` | Additional messages to prepend to the conversation |
+| `input` | `array` | Variables to substitute into the prompt template |
+| `config` | `RuntimeConfig` | Optional runtime config (thread ID, state, etc.) |
+
+## Memory
+
+Every agent maintains a `ChatMemory` instance that persists messages across steps within a single invocation. By default, memory uses an in-memory store (not persisted between requests).
+
+To persist memory across requests, use the `CacheStore`:
+
+```php
+use Cortex\Agents\Agent;
+use Cortex\Memory\Stores\CacheStore;
+
+$agent = new Agent(
+    id: 'assistant',
+    prompt: 'You are a helpful assistant.',
+    memoryStore: new CacheStore(threadId: $request->session()->getId()),
+);
+```
+
+The agent will automatically recall previous messages for the same `threadId`.
+
+## Steps and Usage
+
+After invocation, you can inspect what happened:
+
+```php
+$result = $agent->invoke(input: ['location' => 'Paris']);
+
+// All steps taken (including tool call steps)
+$steps = $agent->getSteps();
+
+// Total token usage across all steps
+$usage = $agent->getTotalUsage();
+echo $usage->totalTokens;
+
+// The parsed structured output (if output schema was set)
+$parsed = $agent->getParsedOutput();
+```
+
+## Lifecycle Events
+
+Register callbacks to react to agent lifecycle events:
+
+```php
+$agent->onStart(fn($event) => logger()->info('Agent started', ['id' => $event->agent->getId()]));
+$agent->onEnd(fn($event) => logger()->info('Agent finished'));
+$agent->onStepStart(fn($event) => logger()->info('Step started'));
+$agent->onStepEnd(fn($event) => logger()->info('Step finished'));
+$agent->onStepError(fn($event) => logger()->error('Step error', ['e' => $event->exception]));
+$agent->onChunk(fn($event) => /* handle stream chunk */);
+```
+
+## Agent as a Tool
+
+An agent can be wrapped as a tool and used by another agent:
+
+```php
+$subAgent = new Agent(id: 'researcher', prompt: 'Research {topic} thoroughly.');
+
+$parentAgent = new Agent(
+    id: 'coordinator',
+    prompt: 'You coordinate research tasks.',
+    tools: [$subAgent->asTool(name: 'research', description: 'Research a topic')],
+);
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Agent Builder" icon="bot-message-square" href="/cortex/agents/agent-builder">
+    Use the fluent builder API to configure agents inline.
+  </Card>
+  <Card title="Custom Agents" icon="brain-cog" href="/cortex/agents/custom-agents">
+    Define reusable agents as classes with AbstractAgentBuilder.
+  </Card>
+  <Card title="Middleware" icon="layers" href="/cortex/agents/middleware">
+    Hook into the agent pipeline with custom middleware.
+  </Card>
+  <Card title="Tools" icon="wrench" href="/cortex/tools/overview">
+    Give your agents tools to call external APIs and functions.
+  </Card>
+</CardGroup>

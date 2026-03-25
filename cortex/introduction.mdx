@@ -1,0 +1,84 @@
+---
+title: Introduction
+description: 'Cortex is an AI framework that brings advanced artificial intelligence capabilities to your Laravel projects.'
+icon: 'book-open'
+---
+
+Cortex is a Laravel package that provides a unified, expressive API for working with large language models (LLMs), building AI agents, managing prompts, and generating embeddings. It abstracts away the differences between AI providers so you can focus on building features rather than integrating APIs.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Multi-Provider LLM" icon="cpu">
+    Connect to OpenAI, Anthropic, Ollama, Groq, Gemini, Mistral, and more through a single consistent API.
+  </Card>
+  <Card title="Agents" icon="bot">
+    Build autonomous agents that can reason, use tools, and complete multi-step tasks with memory and streaming support.
+  </Card>
+  <Card title="Prompts" icon="file-text">
+    Manage prompts with a fluent builder API. Load prompts from Langfuse, Blade templates, or MCP servers.
+  </Card>
+  <Card title="Tools" icon="wrench">
+    Give agents the ability to call functions, fetch URLs, read files, or connect to any MCP server.
+  </Card>
+  <Card title="Structured Output" icon="layers">
+    Extract typed, validated data from LLM responses using JSON schemas, PHP classes, or enums.
+  </Card>
+  <Card title="Streaming" icon="zap">
+    Stream responses in real-time using Vercel AI SDK, AG-UI, or raw SSE protocols.
+  </Card>
+  <Card title="Embeddings" icon="database">
+    Generate vector embeddings with OpenAI or Ollama for semantic search and RAG pipelines.
+  </Card>
+  <Card title="Pipelines" icon="workflow">
+    Compose LLMs, prompts, agents, and output parsers into reusable, chainable pipelines.
+  </Card>
+</CardGroup>
+
+## How It Works
+
+At its core, Cortex provides a `Cortex` facade with entry points for each major feature:
+
+```php
+use Cortex\Cortex;
+
+// Call an LLM directly
+$result = Cortex::llm('openai')->invoke([
+    new UserMessage('What is the capital of France?'),
+]);
+
+// Use a prompt with variables
+$result = Cortex::prompt('What is the capital of {country}?')
+    ->llm()
+    ->invoke(['country' => 'France']);
+
+// Run an agent with tools
+$result = Cortex::agent('weather_agent')->invoke(
+    input: ['location' => 'Paris'],
+);
+
+// Generate embeddings
+$result = Cortex::embeddings('openai')->invoke('Some text to embed');
+```
+
+## Architecture
+
+```
+Cortex::prompt()    →  PromptBuilder / PromptFactory
+Cortex::llm()       →  LLM Driver (OpenAI, Anthropic, ...)
+Cortex::agent()     →  Agent (prompt + LLM + tools + memory)
+Cortex::embeddings() → Embeddings Driver
+```
+
+Agents are built from three components: a **prompt** (the system instructions), an **LLM** (the model to call), and optional **tools** (functions the model can invoke). The agent runs a pipeline that handles tool call loops, memory, structured output, and streaming automatically.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="terminal" href="/cortex/installation">
+    Install Cortex and configure your first LLM provider.
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/cortex/quickstart">
+    Build your first agent in under five minutes.
+  </Card>
+</CardGroup>

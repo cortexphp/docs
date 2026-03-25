@@ -1,0 +1,86 @@
+---
+title: Blade
+description: 'Load prompts from Blade template files with full template syntax support.'
+icon: 'file-code'
+---
+
+The Blade factory loads prompts from Laravel Blade view files. This is useful for prompts that need conditional logic, loops, includes, or any other Blade feature.
+
+## Configuration
+
+```php
+// config/cortex.php
+'prompt_factory' => [
+    'blade' => [
+        'path' => 'resources/views/prompts',
+    ],
+],
+```
+
+The `path` is relative to `base_path()`. All `.blade.php` files in this directory are available as prompts.
+
+## Creating a Blade Prompt
+
+Create a Blade file at the configured path. All variables passed to `invoke()` are available in the template:
+
+```blade
+{{-- resources/views/prompts/geography.blade.php --}}
+You are an expert geographer.
+
+Answer the following question about {{ $country }}:
+{{ $question }}
+
+@if($include_population ?? false)
+Also include the current population.
+@endif
+```
+
+## Usage
+
+The prompt name is the filename without `.blade.php`:
+
+```php
+use Cortex\Prompts\Prompt;
+
+$prompt = Prompt::factory('blade')->make('geography');
+
+$result = $prompt->llm()->invoke([
+    'country'            => 'France',
+    'question'           => 'What is the capital?',
+    'include_population' => true,
+]);
+```
+
+## Using Blade Features
+
+Since these are standard Blade views, you can use the full Blade feature set:
+
+```blade
+{{-- resources/views/prompts/support-agent.blade.php --}}
+You are a support agent for {{ $product_name }}.
+
+@if(!empty($user_name))
+You are speaking with {{ $user_name }}.
+@endif
+
+Your responsibilities:
+@foreach($responsibilities as $item)
+- {{ $item }}
+@endforeach
+
+@include('prompts.partials.tone-guidelines')
+```
+
+```php
+$prompt = Prompt::factory('blade')->make('support-agent');
+
+$result = $prompt->llm()->invoke([
+    'product_name'    => 'Acme SaaS',
+    'user_name'       => 'Alice',
+    'responsibilities' => ['Answer billing questions', 'Escalate technical issues'],
+]);
+```
+
+<Note>
+Blade prompts are always compiled as text prompts. For chat-style prompts with system and user messages, use the Langfuse or MCP factory, or define prompts inline with the builder.
+</Note>

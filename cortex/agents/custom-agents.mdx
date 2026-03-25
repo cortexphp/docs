@@ -1,0 +1,161 @@
+---
+title: Custom Agents
+description: 'Define reusable, registerable agents as classes with AbstractAgentBuilder.'
+icon: 'brain-cog'
+---
+
+For agents you use repeatedly across your application, define them as a class by extending `AbstractAgentBuilder`. This makes them registerable, injectable, and easy to test.
+
+## Creating an Agent Class
+
+Extend `AbstractAgentBuilder` and implement `id()` and `prompt()`. Override any other methods you need:
+
+```php
+use Cortex\Cortex;
+use Cortex\Agents\AbstractAgentBuilder;
+use Cortex\LLM\Contracts\LLM;
+use Cortex\LLM\Data\Messages\SystemMessage;
+use Cortex\Prompts\Builders\ChatPromptBuilder;
+use Cortex\Prompts\Templates\ChatPromptTemplate;
+use Cortex\Tools\Prebuilt\GetCurrentWeatherTool;
+
+class WeatherAgent extends AbstractAgentBuilder
+{
+    public static function id(): string
+    {
+        return 'weather';
+    }
+
+    public function name(): ?string
+    {
+        return 'Weather Assistant';
+    }
+
+    public function description(): ?string
+    {
+        return 'Provides accurate weather information for any location.';
+    }
+
+    public function prompt(): ChatPromptTemplate|ChatPromptBuilder|string
+    {
+        return Cortex::prompt([
+            new SystemMessage(
+                'You are a helpful weather assistant. Use the get_weather tool to fetch current weather data.'
+            ),
+        ]);
+    }
+
+    public function llm(): LLM|string|null
+    {
+        return Cortex::llm('openai', 'gpt-4.1-mini');
+    }
+
+    public function tools(): array
+    {
+        return [
+            GetCurrentWeatherTool::class,
+        ];
+    }
+}
+```
+
+## Methods to Override
+
+| Method | Return Type | Default | Description |
+|--------|-------------|---------|-------------|
+| `id()` | `string` | — | **Required.** Unique identifier for the agent |
+| `prompt()` | `string\|ChatPromptBuilder\|ChatPromptTemplate` | — | **Required.** The system prompt |
+| `name()` | `?string` | `null` | Human-readable name |
+| `description()` | `?string` | `null` | Description (also used when agent is used as a tool) |
+| `llm()` | `LLM\|string\|null` | `null` (uses default) | The LLM to use |
+| `tools()` | `array\|ToolKit` | `[]` | Tools available to the agent |
+| `toolChoice()` | `ToolChoice` | `ToolChoice::Auto` | How the model selects tools |
+| `output()` | `ObjectSchema\|array\|string\|null` | `null` | Structured output schema |
+| `outputMode()` | `StructuredOutputMode` | `Auto` | Structured output mode |
+| `memoryStore()` | `?Store` | `null` (in-memory) | Custom memory store |
+| `maxSteps()` | `int` | `5` | Max tool-call iterations |
+| `strict()` | `bool` | `true` | Enforce input/output schemas |
+| `initialPromptVariables()` | `array` | `[]` | Pre-filled prompt variables |
+| `middleware()` | `array` | `[]` | Custom middleware |
+
+## Instantiating and Invoking
+
+### `make()` — Build and return an `Agent`
+
+```php
+$agent = WeatherAgent::make();
+$result = $agent->invoke(input: ['location' => 'Paris']);
+```
+
+### `build()` — Build via the instance
+
+```php
+$builder = new WeatherAgent();
+$agent = $builder->build();
+```
+
+### `invoke()` / `stream()` — Shortcut on the builder
+
+```php
+$result = WeatherAgent::make()->invoke(input: ['location' => 'Paris']);
+
+// Or via the builder instance
+$result = (new WeatherAgent())->invoke(input: ['location' => 'Paris']);
+```
+
+## Registering Agents
+
+### Via config
+
+Add the class to the `agents` array in `config/cortex.php`:
+
+```php
+'agents' => [
+    WeatherAgent::class,
+    App\Agents\SupportAgent::class,
+],
+```
+
+### Via service provider
+
+```php
+use Cortex\Cortex;
+
+public function boot(): void
+{
+    Cortex::registerAgent(WeatherAgent::class);
+
+    // Or register with a name override
+    Cortex::registerAgent(WeatherAgent::class, 'my_weather_agent');
+}
+```
+
+### Retrieving from the registry
+
+```php
+$agent = Cortex::agent('weather'); // Uses the id() from the class
+$result = $agent->invoke(input: ['location' => 'London']);
+```
+
+## Dependency Injection
+
+`AbstractAgentBuilder::make()` resolves the class through the Laravel service container, so constructor dependencies are injected automatically:
+
+```php
+class SupportAgent extends AbstractAgentBuilder
+{
+    public function __construct(
+        private readonly KnowledgeBaseService $kb,
+    ) {}
+
+    public function tools(): array
+    {
+        return [
+            new SearchKnowledgeBaseTool($this->kb),
+        ];
+    }
+}
+
+// Container resolves KnowledgeBaseService automatically
+$agent = SupportAgent::make();
+```

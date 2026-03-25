@@ -1,0 +1,55 @@
+---
+title: MCP
+description: 'Load prompts from a Model Context Protocol server.'
+icon: 'plug'
+---
+
+The MCP factory fetches prompts from an [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server. This is useful when your prompts are managed by an MCP-compatible tool or service.
+
+## Configuration
+
+```php
+// config/cortex.php
+'prompt_factory' => [
+    'mcp' => [
+        'server' => env('CORTEX_MCP_PROMPT_SERVER', 'local_http'),
+    ],
+],
+```
+
+The `server` key references an entry in the `mcp_servers` section of the config:
+
+```php
+'mcp_servers' => [
+    'local_http' => [
+        'transport' => 'http',
+        'url'       => 'http://localhost:3001/sse',
+    ],
+],
+```
+
+## Usage
+
+```php
+use Cortex\Prompts\Prompt;
+
+$prompt = Prompt::factory('mcp')->make('my-mcp-prompt');
+
+$result = $prompt->llm()->invoke(['variable' => 'value']);
+```
+
+The prompt name must match the prompt identifier exposed by the MCP server.
+
+## Configuring the Server
+
+Set the MCP server to use for prompts in `.env`:
+
+```bash
+CORTEX_MCP_PROMPT_SERVER=local_http
+```
+
+To use a different server, update the config or set the env var to point to any server defined in `mcp_servers`.
+
+<Note>
+MCP prompt servers must implement the `prompts/get` capability of the MCP specification. Not all MCP servers expose prompts — check your server's documentation.
+</Note>

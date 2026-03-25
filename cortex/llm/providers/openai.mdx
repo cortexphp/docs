@@ -1,0 +1,101 @@
+---
+title: OpenAI
+description: 'Configure and use OpenAI models including GPT-4o and reasoning models.'
+icon: '/assets/providers/openai.svg'
+---
+
+Cortex supports OpenAI via two drivers: **Responses API** (default, recommended) and **Chat Completions API**.
+
+## Configuration
+
+```php
+// config/cortex.php
+'openai' => [
+    'driver' => LLMDriver::OpenAIResponses,
+    'options' => [
+        'api_key'      => env('OPENAI_API_KEY', ''),
+        'base_uri'     => env('OPENAI_BASE_URI'),
+        'organization' => env('OPENAI_ORGANIZATION'),
+    ],
+    'default_model'      => 'gpt-4.1-mini',
+    'default_parameters' => [
+        'temperature'       => null,
+        'max_output_tokens' => 1024,
+        'top_p'             => null,
+    ],
+],
+```
+
+Add your API key to `.env`:
+
+```bash
+OPENAI_API_KEY=sk-...
+```
+
+## Usage
+
+```php
+use Cortex\Cortex;
+
+// Use the default OpenAI model
+$result = Cortex::llm('openai')->invoke([...]);
+
+// Specify a model
+$result = Cortex::llm('openai', 'gpt-4o')->invoke([...]);
+
+// Shortcut syntax
+$result = Cortex::llm('openai/gpt-4o')->invoke([...]);
+```
+
+## Drivers
+
+### `openai_responses` (Recommended)
+
+Uses the [OpenAI Responses API](https://platform.openai.com/docs/api-reference/responses). This is the default driver and supports the full range of OpenAI features:
+
+- Reasoning models (`o1`, `o3`, `o4-mini`)
+- Structured output with JSON schema enforcement
+- Tool use and parallel tool calls
+- Streaming
+
+```php
+use Cortex\LLM\Enums\LLMDriver;
+
+'driver' => LLMDriver::OpenAIResponses,
+```
+
+### `openai_chat`
+
+Uses the [Chat Completions API](https://platform.openai.com/docs/api-reference/chat). Use this if you need compatibility with older models or third-party OpenAI-compatible endpoints.
+
+```php
+'driver' => LLMDriver::OpenAIChat,
+```
+
+## Reasoning Models
+
+Reasoning models (`o1`, `o3`, `o4-mini`) work with the `openai_responses` driver:
+
+```php
+$result = Cortex::llm('openai', 'o4-mini')->invoke([...]);
+```
+
+<Note>
+Reasoning models do not support `temperature`. Leave it as `null` in `default_parameters`.
+</Note>
+
+## Azure OpenAI
+
+To use Azure OpenAI, add a new provider entry pointing to your Azure endpoint:
+
+```php
+'azure' => [
+    'driver' => LLMDriver::OpenAIChat,
+    'options' => [
+        'api_key'  => env('AZURE_OPENAI_API_KEY', ''),
+        'base_uri' => env('AZURE_OPENAI_BASE_URI'), // e.g. https://my-resource.openai.azure.com/openai/deployments/my-deployment
+    ],
+    'default_model'      => 'gpt-4o',
+    'default_parameters' => ['max_tokens' => 1024],
+],
+```

@@ -1,0 +1,168 @@
+---
+title: Other Providers
+description: 'Ollama, LM Studio, Groq, Gemini, Mistral, and any OpenAI-compatible API.'
+icon: 'server'
+---
+
+All providers other than OpenAI and Anthropic use the `openai_chat` driver, which is compatible with any OpenAI Chat Completions-compatible API.
+
+## Local Providers
+
+### Ollama
+
+Run open-source models locally with [Ollama](https://ollama.com):
+
+```bash
+OLLAMA_BASE_URI=http://localhost:11434/v1
+```
+
+```php
+// config/cortex.php
+'ollama' => [
+    'driver' => LLMDriver::OpenAIChat,
+    'options' => [
+        'api_key'  => 'ollama',
+        'base_uri' => env('OLLAMA_BASE_URI', 'http://localhost:11434/v1'),
+    ],
+    'default_model'      => 'llama3.2',
+    'default_parameters' => ['max_tokens' => 1024],
+],
+```
+
+```php
+$result = Cortex::llm('ollama', 'llama3.2')->invoke([...]);
+```
+
+### LM Studio
+
+Run models locally with [LM Studio](https://lmstudio.ai):
+
+```bash
+LMSTUDIO_BASE_URI=http://localhost:1234/v1
+```
+
+```php
+$result = Cortex::llm('lmstudio', 'openai/gpt-oss-20b')->invoke([...]);
+```
+
+## Cloud Providers
+
+### Groq
+
+[Groq](https://groq.com) provides fast inference for open-source models:
+
+```bash
+GROQ_API_KEY=gsk_...
+```
+
+```php
+$result = Cortex::llm('groq', 'llama-3.1-70b-versatile')->invoke([...]);
+```
+
+### xAI (Grok)
+
+[xAI](https://x.ai) Grok models:
+
+```bash
+XAI_API_KEY=xai-...
+```
+
+```php
+$result = Cortex::llm('xai', 'grok-2-1212')->invoke([...]);
+```
+
+### Google Gemini
+
+[Google Gemini](https://ai.google.dev) via the OpenAI-compatible endpoint:
+
+```bash
+GEMINI_API_KEY=AIza...
+```
+
+```php
+$result = Cortex::llm('gemini', 'gemini-1.5-pro')->invoke([...]);
+```
+
+### Mistral
+
+[Mistral AI](https://mistral.ai) models:
+
+```bash
+MISTRAL_API_KEY=...
+```
+
+```php
+$result = Cortex::llm('mistral', 'mistral-large-latest')->invoke([...]);
+```
+
+### Together AI
+
+[Together AI](https://www.together.ai) for open-source model hosting:
+
+```bash
+TOGETHER_API_KEY=...
+```
+
+```php
+$result = Cortex::llm('together', 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo')->invoke([...]);
+```
+
+### OpenRouter
+
+[OpenRouter](https://openrouter.ai) as a unified gateway to many providers:
+
+```bash
+OPENROUTER_API_KEY=sk-or-...
+```
+
+```php
+$result = Cortex::llm('openrouter', 'anthropic/claude-3.5-sonnet')->invoke([...]);
+```
+
+### DeepSeek
+
+[DeepSeek](https://deepseek.com) models:
+
+```bash
+DEEPSEEK_API_KEY=sk-...
+```
+
+```php
+$result = Cortex::llm('deepseek', 'deepseek-chat')->invoke([...]);
+```
+
+### GitHub Models
+
+[GitHub Models](https://github.com/marketplace/models) for Azure-hosted models:
+
+```bash
+GITHUB_API_KEY=ghp_...
+```
+
+```php
+$result = Cortex::llm('github', 'openai/gpt-4.1-mini')->invoke([...]);
+```
+
+## Adding a Custom Provider
+
+Any OpenAI-compatible API can be added as a custom provider:
+
+```php
+// config/cortex.php
+'my_provider' => [
+    'driver' => LLMDriver::OpenAIChat,
+    'options' => [
+        'api_key'  => env('MY_PROVIDER_API_KEY', ''),
+        'base_uri' => env('MY_PROVIDER_BASE_URI', 'https://api.myprovider.com/v1'),
+    ],
+    'default_model'      => 'my-model-name',
+    'default_parameters' => [
+        'temperature' => null,
+        'max_tokens'  => 1024,
+    ],
+],
+```
+
+```php
+$result = Cortex::llm('my_provider')->invoke([...]);
+```

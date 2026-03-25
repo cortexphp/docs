@@ -1,0 +1,114 @@
+---
+title: Embeddings
+description: 'Generate vector embeddings for semantic search and RAG pipelines.'
+icon: 'database'
+---
+
+Cortex provides a unified API for generating text embeddings via OpenAI or Ollama. Embeddings are numerical vector representations of text that capture semantic meaning, enabling similarity search and retrieval-augmented generation (RAG).
+
+## Basic Usage
+
+```php
+use Cortex\Cortex;
+
+$result = Cortex::embeddings()->invoke('Lorem ipsum dolor sit amet');
+
+$vector = $result->embeddings; // float[]
+$dimensions = count($vector);  // e.g. 1536 for text-embedding-3-small
+```
+
+## Specifying a Driver
+
+Pass the driver name as the first argument:
+
+```php
+$result = Cortex::embeddings('openai')->invoke('Some text');
+$result = Cortex::embeddings('ollama')->invoke('Some text');
+```
+
+## Specifying a Model
+
+Pass the model as the second argument:
+
+```php
+$result = Cortex::embeddings('openai', 'text-embedding-3-large')->invoke('Some text');
+$result = Cortex::embeddings('ollama', 'mxbai-embed-large')->invoke('Some text');
+```
+
+## Embedding Multiple Documents
+
+Pass an array of strings to embed multiple documents at once:
+
+```php
+$results = Cortex::embeddings()->invoke([
+    'The quick brown fox',
+    'Lorem ipsum dolor sit amet',
+    'Cortex is an AI framework for Laravel',
+]);
+
+foreach ($results as $result) {
+    $vector = $result->embeddings;
+}
+```
+
+## Configuration
+
+Configure embedding providers in `config/cortex.php`:
+
+```php
+'embedding' => [
+    'default' => env('CORTEX_DEFAULT_EMBEDDING_DRIVER', 'openai'),
+
+    'openai' => [
+        'driver'             => 'openai',
+        'options'            => [
+            'api_key'  => env('OPENAI_API_KEY', ''),
+            'base_uri' => env('OPENAI_BASE_URI'),
+        ],
+        'default_model'      => 'text-embedding-3-small',
+        'default_dimensions' => 1536,
+    ],
+
+    'ollama' => [
+        'driver'             => 'ollama',
+        'options'            => [
+            'base_url' => env('OLLAMA_BASE_URI', 'http://localhost:1234'),
+        ],
+        'default_model'      => 'nomic-embed-text',
+        'default_dimensions' => 768,
+    ],
+],
+```
+
+Set the default driver in `.env`:
+
+```bash
+CORTEX_DEFAULT_EMBEDDING_DRIVER=openai
+```
+
+## Using the Embeddings Facade
+
+```php
+use Cortex\Facades\Embeddings;
+
+$result = Embeddings::driver('openai')->invoke('Some text');
+```
+
+## EmbeddingsResult
+
+The `invoke()` method returns an `EmbeddingsResult` (or a collection of them for batch input):
+
+```php
+$result = Cortex::embeddings()->invoke('Some text');
+
+$result->embeddings; // float[] — the embedding vector
+$result->model;      // string — the model used
+$result->document;   // Document — the original input
+```
+
+## Supported Providers
+
+| Provider | Driver | Default Model | Dimensions |
+|----------|--------|---------------|------------|
+| OpenAI | `openai` | `text-embedding-3-small` | 1536 |
+| Ollama | `ollama` | `nomic-embed-text` | 768 |

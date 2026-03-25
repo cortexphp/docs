@@ -1,0 +1,110 @@
+---
+title: Overview
+description: 'Call any LLM provider with a single, consistent API.'
+icon: 'cpu'
+---
+
+`Cortex::llm()` returns an LLM instance that you can configure and invoke directly, or pipe through a prompt or pipeline.
+
+## Basic Usage
+
+```php
+use Cortex\Cortex;
+use Cortex\LLM\Data\Messages\SystemMessage;
+use Cortex\LLM\Data\Messages\UserMessage;
+
+$result = Cortex::llm()->invoke([
+    new SystemMessage('You are a helpful assistant.'),
+    new UserMessage('What is the capital of France?'),
+]);
+
+echo $result->content(); // "The capital of France is Paris."
+```
+
+## Specifying a Provider
+
+Pass a provider name (matching a key in `config/cortex.php`) as the first argument:
+
+```php
+$result = Cortex::llm('anthropic')->invoke([...]);
+$result = Cortex::llm('ollama')->invoke([...]);
+$result = Cortex::llm('groq')->invoke([...]);
+```
+
+## Specifying a Model
+
+Pass the model name as the second argument:
+
+```php
+$result = Cortex::llm('anthropic', 'claude-3-7-sonnet-20250219')->invoke([...]);
+$result = Cortex::llm('openai', 'gpt-4o')->invoke([...]);
+```
+
+You can also use the shortcut string syntax `provider/model`:
+
+```php
+$result = Cortex::llm('anthropic/claude-3-7-sonnet-20250219')->invoke([...]);
+$result = Cortex::llm('ollama/llama3.2')->invoke([...]);
+$result = Cortex::llm('lmstudio/openai/gpt-oss-20b')->invoke([...]);
+```
+
+## Setting Parameters
+
+Chain methods to configure the request:
+
+```php
+$result = Cortex::llm('anthropic', 'claude-3-7-sonnet-20250219')
+    ->withTemperature(0.7)
+    ->withMaxTokens(2048)
+    ->invoke([
+        new SystemMessage('You are a helpful assistant.'),
+        new UserMessage('Write a short poem about Paris.'),
+    ]);
+```
+
+| Method | Description |
+|--------|-------------|
+| `withTemperature(float)` | Controls randomness (0.0–1.0) |
+| `withMaxTokens(int)` | Maximum tokens in the response |
+| `withModel(string)` | Override the model |
+| `withStreaming(bool)` | Enable streaming mode |
+| `withTools(array)` | Attach tools for function calling |
+| `withStructuredOutput(schema)` | Request a structured response |
+
+## Working with Results
+
+The `invoke()` method returns a `ChatResult`:
+
+```php
+$result = Cortex::llm()->invoke([new UserMessage('Hello')]);
+
+$result->content();      // string — the text response
+$result->message();      // AssistantMessage instance
+$result->usage();        // Usage (promptTokens, completionTokens, totalTokens)
+$result->finishReason(); // 'stop', 'tool_calls', 'length', etc.
+```
+
+## Using the LLM Facade
+
+You can also use the `LLM` facade directly:
+
+```php
+use Cortex\Facades\LLM;
+
+$llm = LLM::provider('openai');
+$llm->withModel('gpt-4o');
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Providers" icon="server" href="/cortex/llm/providers">
+    See all supported providers and how to configure them.
+  </Card>
+  <Card title="Structured Output" icon="layers" href="/cortex/llm/structured-output">
+    Extract typed data from LLM responses.
+  </Card>
+  <Card title="Streaming" icon="zap" href="/cortex/llm/streaming">
+    Stream responses in real-time.
+  </Card>
+</CardGroup>

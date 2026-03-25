@@ -1,0 +1,105 @@
+---
+title: Streaming
+description: 'Stream LLM responses in real-time using multiple wire protocols.'
+icon: 'zap'
+---
+
+Cortex supports streaming responses from LLMs and agents. You can stream to the browser using standard protocols like Vercel AI SDK data streams or AG-UI, or consume the stream server-side.
+
+## Streaming from an LLM
+
+Call `withStreaming()` before `invoke()`, or use `stream()` directly, then iterate over the result:
+
+```php
+use Cortex\Cortex;
+use Cortex\LLM\Data\Messages\UserMessage;
+
+$stream = Cortex::llm()->stream([
+    new UserMessage('Tell me a story'),
+]);
+
+foreach ($stream as $chunk) {
+    echo $chunk->content();
+}
+```
+
+## Streaming from an Agent
+
+Call `stream()` instead of `invoke()`:
+
+```php
+$stream = Cortex::agent('weather_agent')->stream(
+    input: ['location' => 'Paris'],
+);
+
+foreach ($stream as $chunk) {
+    echo $chunk->content();
+}
+```
+
+## Streaming to the Browser
+
+Use `streamResponse()` to return a `StreamedResponse` from a controller. Pass the desired protocol:
+
+```php
+use Cortex\Cortex;
+use Cortex\LLM\Enums\StreamingProtocol;
+use Illuminate\Http\Request;
+
+class ChatController extends Controller
+{
+    public function __invoke(Request $request): StreamedResponse
+    {
+        return Cortex::agent('my_agent')
+            ->stream(messages: [new UserMessage($request->input('message'))])
+            ->streamResponse(StreamingProtocol::Vercel);
+    }
+}
+```
+
+## Streaming Protocols
+
+| Protocol | Enum | Description |
+|----------|------|-------------|
+| Vercel | `StreamingProtocol::Vercel` | Compatible with the [Vercel AI SDK](https://sdk.vercel.ai). The default. |
+| AG-UI | `StreamingProtocol::AGUI` | Compatible with the [AG-UI protocol](https://ag-ui.com) for agent UIs. |
+| Raw | `StreamingProtocol::Raw` | Plain SSE with raw chunks. |
+| Text | `StreamingProtocol::Text` | Plain text stream, no SSE framing. |
+
+Set the default in `config/cortex.php`:
+
+```php
+'default_streaming_protocol' => StreamingProtocol::Vercel,
+```
+
+Or override per-request:
+
+```php
+->streamResponse(StreamingProtocol::AGUI)
+```
+
+## Listening to Stream Events
+
+You can register callbacks on an agent to react to stream lifecycle events:
+
+```php
+$agent = Cortex::agent('weather_agent');
+
+$agent->onStart(fn($event) => logger()->info('Agent started'));
+$agent->onEnd(fn($event) => logger()->info('Agent finished'));
+$agent->onStepStart(fn($event) => logger()->info('Step started'));
+$agent->onStepEnd(fn($event) => logger()->info('Step finished'));
+$agent->onChunk(fn($event) => /* handle each chunk */);
+```
+
+## AG-UI HTTP Endpoint
+
+Cortex includes a built-in controller for serving AG-UI compatible streams. Register the route in your application:
+
+```php
+use Cortex\Http\Controllers\AGUIController;
+
+Route::post('/api/agent', AGUIController::class);
+```
+
+The controller reads `messages`, `thread_id`, `run_id`, and `state` from the request and streams the response in AG-UI format.

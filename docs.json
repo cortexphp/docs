@@ -23,6 +23,82 @@
     "navigation": {
         "products": [
             {
+                "product": "Cortex",
+                "icon": "brain",
+                "groups": [
+                    {
+                        "group": "Get Started",
+                        "pages": [
+                            "cortex/introduction",
+                            "cortex/installation",
+                            "cortex/quickstart",
+                            "cortex/configuration"
+                        ]
+                    },
+                    {
+                        "group": "LLM",
+                        "pages": [
+                            "cortex/llm/overview",
+                            {
+                                "group": "Providers",
+                                "icon": "server",
+                                "expanded": false,
+                                "root": "cortex/llm/providers/overview",
+                                "pages": [
+                                    "cortex/llm/providers/openai",
+                                    "cortex/llm/providers/anthropic",
+                                    "cortex/llm/providers/other"
+                                ]
+                            },
+                            "cortex/llm/structured-output",
+                            "cortex/llm/streaming"
+                        ]
+                    },
+                    {
+                        "group": "Prompts",
+                        "pages": [
+                            "cortex/prompts/overview",
+                            "cortex/prompts/prompt-builders",
+                            {
+                                "group": "Prompt Factories",
+                                "icon": "factory",
+                                "expanded": false,
+                                "root": "cortex/prompts/factories/overview",
+                                "pages": [
+                                    "cortex/prompts/factories/blade",
+                                    "cortex/prompts/factories/mcp",
+                                    "cortex/prompts/factories/langfuse"
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "group": "Agents",
+                        "pages": [
+                            "cortex/agents/overview",
+                            "cortex/agents/agent-builder",
+                            "cortex/agents/custom-agents",
+                            "cortex/agents/middleware"
+                        ]
+                    },
+                    {
+                        "group": "Tools",
+                        "pages": [
+                            "cortex/tools/overview",
+                            "cortex/tools/creating-tools",
+                            "cortex/tools/mcp-tools"
+                        ]
+                    },
+                    {
+                        "group": "More",
+                        "pages": [
+                            "cortex/embeddings",
+                            "cortex/pipelines"
+                        ]
+                    }
+                ]
+            },
+            {
                 "product": "JSON Schema",
                 "icon": "braces",
                 "groups": [
