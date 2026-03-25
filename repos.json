@@ -1,6 +1,12 @@
 [
     {
         "owner": "cortexphp",
+        "repo": "cortex",
+        "docsPath": "docs",
+        "ref": "main"
+    },
+    {
+        "owner": "cortexphp",
         "repo": "json-schema",
         "docsPath": "docs",
         "ref": "main"
