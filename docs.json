@@ -168,6 +168,32 @@
                         ]
                     }
                 ]
+            },
+            {
+                "product": "OpenAPI",
+                "icon": "file-text",
+                "groups": [
+                    {
+                        "group": "Get Started",
+                        "pages": [
+                            "openapi/introduction",
+                            "openapi/installation",
+                            "openapi/quickstart"
+                        ]
+                    },
+                    {
+                        "group": "Core Concepts",
+                        "pages": [
+                            "openapi/info-and-metadata",
+                            "openapi/paths-and-operations",
+                            "openapi/request-bodies",
+                            "openapi/responses",
+                            "openapi/components",
+                            "openapi/security",
+                            "openapi/webhooks-and-callbacks"
+                        ]
+                    }
+                ]
             }
         ]
     },
