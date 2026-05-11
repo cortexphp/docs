@@ -16,5 +16,11 @@
         "repo": "json-repair",
         "docsPath": "docs",
         "ref": "main"
+    },
+    {
+        "owner": "cortexphp",
+        "repo": "openapi",
+        "docsPath": "docs",
+        "ref": "main"
     }
 ]
