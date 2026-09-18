@@ -36,7 +36,7 @@ icon: 'book-open'
     href="/json-schema/installation"
     icon="shield"
   >
-    Built with PHP 8.3+ features and strict typing for reliable, maintainable code.
+    Built with PHP 8.4+ features and strict typing for reliable, maintainable code.
   </Card>
   <Card
     title="Conditional Schemas"
@@ -70,7 +70,7 @@ icon: 'book-open'
 
 ## About This Package
 
-This PHP package provides a fluent, type-safe way to build and validate JSON Schemas. Built with PHP 8.3+ features and strict typing, it supports multiple JSON Schema specification versions with automatic feature validation.
+This PHP package provides a fluent, type-safe way to build and validate JSON Schemas. Built with PHP 8.4+ features and strict typing, it supports multiple JSON Schema specification versions with automatic feature validation.
 
 ## Quick Example
 
@@ -109,13 +109,13 @@ if ($schema->isValid($data)) {
 ```
 
 <Note>
-This package requires PHP 8.3 or higher and uses modern PHP features for optimal performance and developer experience.
+This package requires PHP 8.4 or higher and uses modern PHP features for optimal performance and developer experience.
 </Note>
 
 ## Supported Schema Types
 
 <Info>
-All schema types support common properties like title, description, examples, default values, and metadata annotations.
+All schema types support common properties like title, description, examples, default values, and metadata annotations. Empty `examples` lists are omitted from the output. Unknown or vendor-specific keywords (including OpenAPI `discriminator` and `x-*` extensions) can be attached with `keyword()`.
 </Info>
 
   - **Object Schema** - Property validation, pattern properties, additional properties, dependencies
@@ -144,6 +144,7 @@ All schema types support common properties like title, description, examples, de
 - **Pattern Properties** - Regex-based property validation
 - **Tuple Validation** - `prefixItems` (Draft 2020-12) and legacy `items`/`additionalItems` tuples (Draft-07)
 - **Contains Validation** - Array item existence validation
+- **Custom Keywords** - `keyword()` for unmodelled JSON Schema / OpenAPI keywords and `x-*` extensions on any schema, including nested ones
 
 ### Code Generation
 Generate schemas from existing PHP code:

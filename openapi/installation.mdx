@@ -6,13 +6,23 @@ icon: 'terminal'
 
 ## Requirements
 
-- PHP 8.3+
+- PHP 8.4+
 
 ## Installation
 
 ```bash
 composer require cortexphp/openapi
 ```
+
+## YAML Output
+
+JSON serialization (`toJson()`, `toArray()`) is built-in. YAML output requires [symfony/yaml](https://symfony.com/doc/current/components/yaml.html):
+
+```bash
+composer require symfony/yaml
+```
+
+`toYaml()` throws a `RuntimeException` if the package is not installed.
 
 ## Development Setup
 
